@@ -9,4 +9,3 @@ translator = pipeline("translation_en_to_es", model="Helsinki-NLP/opus-mt-en-es"
 async def translate_text(payload: WordRequest):
     result = translator(payload.word)
     return {"translated": result[0]["translation_text"]}
-

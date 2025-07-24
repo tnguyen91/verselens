@@ -4,7 +4,6 @@ from services.define import router as define_router
 
 app = FastAPI(title="VerseLens API")
 
-# Include feature routes
 app.include_router(translation_router, prefix="/translate")
 app.include_router(define_router, prefix="/define")
 
