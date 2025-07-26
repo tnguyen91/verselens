@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableHighlight,
-  Modal,
   FlatList,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+
+import Modal from 'react-native-modal';
 
 type BibleData = {
   [bookName: string]: {
@@ -33,7 +34,11 @@ export default function App() {
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [bookModalVisible, setBookModalVisible] = useState(false);
   const [chapterModalVisible, setChapterModalVisible] = useState(false);
-  const [uiVisible, setUiVisible] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredBooks = bookNames.filter((book) =>
+    book.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     async function prepare() {
@@ -58,18 +63,24 @@ export default function App() {
   }, [appIsReady]);
 
   if (!appIsReady) {
-    return null; // app is loading
+    return null;
   }
 
   const handleBookSelect = (book: string) => {
     setSelectedBook(book);
-    setSelectedChapter(1); // reset chapter
+    setSelectedChapter(1); 
     setBookModalVisible(false);
+    scrollToTop();
   };
 
   const handleChapterSelect = (chapter: number) => {
     setSelectedChapter(chapter);
     setChapterModalVisible(false);
+    scrollToTop();
+  };
+
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   };
 
   const goToNext = () => {
@@ -77,11 +88,15 @@ export default function App() {
     const chapterCount = Object.keys(bibleData[selectedBook]).length;
 
     if (selectedChapter < chapterCount) {
-      setSelectedChapter(selectedChapter + 1);
+      setSelectedChapter((prev) => {
+        scrollToTop();
+        return prev + 1;
+      });
     } else if (currentBookIndex < bookNames.length - 1) {
       const nextBook = bookNames[currentBookIndex + 1];
       setSelectedBook(nextBook);
       setSelectedChapter(1);
+      scrollToTop();
     }
   };
 
@@ -89,7 +104,10 @@ export default function App() {
     const currentBookIndex = bookNames.indexOf(selectedBook);
 
     if (selectedChapter > 1) {
-      setSelectedChapter(selectedChapter - 1);
+      setSelectedChapter((prev) => {
+        scrollToTop();
+        return prev - 1;
+      });
     } else if (currentBookIndex > 0) {
       const previousBook = bookNames[currentBookIndex - 1];
       const lastChapterOfPreviousBook = Object.keys(
@@ -98,9 +116,9 @@ export default function App() {
 
       setSelectedBook(previousBook);
       setSelectedChapter(lastChapterOfPreviousBook);
+      scrollToTop();
     }
   };
-
 
   const chapterCount = Object.keys(bibleData[selectedBook]).length;
   const chapterList = Array.from({ length: chapterCount }, (_, i) => i + 1);
@@ -113,7 +131,7 @@ export default function App() {
       Object.keys(bibleData[selectedBook]).length;
 
   return (
-    <SafeAreaView style={styles.safeAreaView} onLayout={onLayoutRootView}>
+    <View style={styles.view}>
       <View style={styles.topBar}>
         <TouchableOpacity
           onPress={() => setBookModalVisible(true)}
@@ -131,11 +149,33 @@ export default function App() {
       </View>
 
       {/* Book Modal */}
-      <Modal visible={bookModalVisible} animationType="slide">
-        <SafeAreaView style={styles.safeAreaView}>
+      <Modal 
+        isVisible={bookModalVisible} 
+        onSwipeComplete={() => setBookModalVisible(false)}
+        swipeDirection='down'
+        style={styles.bookModal}
+        propagateSwipe={true}
+      > 
+        <View style={styles.modalContent}>
+          <View style={styles.modalHandle}>
+            {/* Search Bar */}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search"
+              placeholderTextColor="#aaa"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              multiline={false}
+            />
+            <TouchableOpacity onPress={() => setBookModalVisible(false)}>
+              <Text style={styles.modalClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
           <FlatList
-            data={bookNames}
+            data={filteredBooks}
             keyExtractor={(item) => item}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.bookItem}
@@ -146,31 +186,47 @@ export default function App() {
                 <Text style={styles.bookText}>{item}</Text>
               </TouchableOpacity>
             )}
+            ListFooterComponent={<View style={{ height: 100}} />}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
 
       {/* Chapter Modal */}
-      <Modal visible={chapterModalVisible} animationType="slide">
-        <SafeAreaView style={styles.safeAreaView} onLayout={onLayoutRootView}>
+      <Modal 
+        isVisible={chapterModalVisible} 
+        onSwipeComplete={() => setChapterModalVisible(false)}
+        swipeDirection='down'
+        style={styles.chapterModal}
+        propagateSwipe={true}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHandle}>
+            <Text style={styles.modalTitle}>Chapters</Text>
+            <TouchableOpacity onPress={() => setChapterModalVisible(false)}>
+              <Text style={styles.modalClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
           <FlatList
             data={chapterList}
             keyExtractor={(item) => item.toString()}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.bookItem}
+                style={styles.chapterItem}
                 onPress={() => handleChapterSelect(item)}
               >
-                <Text style={styles.bookText}>Chapter {item}</Text>
+                <Text style={styles.chapterText}>Ch. {item}</Text>
               </TouchableOpacity>
             )}
+            ListFooterComponent={<View style={{ height: 100}} />}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
 
       {/* Verses List */}
       <View style={styles.verseContainer}>
         <FlatList
+          ListHeaderComponent={<View style={{ height: 10}} />}
+          ref={flatListRef}
           data={Object.entries(
             bibleData[selectedBook][selectedChapter.toString()]
           )}
@@ -181,6 +237,7 @@ export default function App() {
               {verseText}
             </Text>
           )}
+          ListFooterComponent={<View style={{ height: 100 }} />}
         />
       </View>
 
@@ -209,18 +266,18 @@ export default function App() {
           </TouchableHighlight>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeAreaView: {
+  view: {
     flex: 1,
     backgroundColor: 'black',
   },
   topBar: {
     backgroundColor: '#000',
-    padding: 5,
+    padding: 7,
     flexDirection: 'row', 
     alignItems: 'center',
     borderBottomWidth: 0.2,
@@ -233,6 +290,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#696969',
     paddingVertical: 7,
     paddingHorizontal: 15,
+    marginTop: 40,
     marginRight: 1,
     marginLeft: 10,
     borderTopLeftRadius: 20,
@@ -245,18 +303,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#696969',
     paddingVertical: 7,
     paddingHorizontal: 15,
+    marginTop: 40,
     marginRight: 10,
     marginLeft: 1,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
   },
   bookItem: {
-    backgroundColor: '#000',
     padding: 20,
   },
   bookText: {
     color: 'white',
     fontSize: 17,
+  },
+  chapterItem: {
+    padding: 20,
+  },
+  chapterText: {
+    color: 'white',
+    fontSize: 20,
   },
   verseContainer: {
     flex: 1,
@@ -282,7 +347,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 20,
-    marginBottom: 30,
+    marginBottom: 20,
     backgroundColor: 'rgba(255, 255, 255, 0)',
   },
   navButtonPlaceholder: {
@@ -303,5 +368,55 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 25,
     fontWeight: 'bold',
+  },
+
+  bookModal: {
+    justifyContent: 'flex-start',
+    backgroundColor: 'black',
+    margin: 0,
+    marginTop: 50,
+  },
+  chapterModal: {
+    justifyContent: 'flex-start',
+    backgroundColor: 'black',
+    margin: 0,
+    marginTop: 50,
+  },
+  modalHandle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomColor: 'rgba(255,255,255,0.2)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+
+  modalTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+
+  modalClose: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalContent: {
+    backgroundColor: '#000',
+    borderRadius: 20,
+  },
+
+  searchInput: {
+    height: 40,  
+    width: '90%', 
+    backgroundColor: '#222',
+    color: 'white',
+    paddingHorizontal: 12,
+    fontSize: 16, 
+    borderRadius: 8,
   },
 });
