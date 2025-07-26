@@ -1,55 +1,36 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableHighlight,
-  FlatList,
-  StyleSheet,
-} from 'react-native';
-
-import Modal from 'react-native-modal';
-
-type BibleData = {
-  [bookName: string]: {
-    [chapterNumber: string]: {
-      [verseNumber: string]: string;
-    };
-  };
-};
-import rawBibleData from './assets/BibleTranslations/ESV/ESV_bible.json';
-const bibleData = rawBibleData as BibleData;
-
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Pressable, FlatList } from 'react-native';
+import type { FlatList as FlatListType } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
+import rawBibleData from './assets/BibleTranslations/ESV/ESV_bible.json';
+import BookSelectorModal from './components/BookSelectorModal';
+import ChapterSelectorModal from './components/ChapterSelectorModal';
+import VerseList from './components/VerseList';
+import NavigationControls from './components/NavigationControls';
+import { styles } from './components/styles';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function App() {
-  const [appIsReady, setAppIsReady] = useState(false);
+const bibleData = rawBibleData as Record<string, Record<string, Record<string, string>>>;
 
-  const bookNames = Object.keys(bibleData);
-  const [selectedBook, setSelectedBook] = useState(bookNames[0]);
+export default function App() {
+  const [isReady, setIsReady] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(Object.keys(bibleData)[0]);
   const [selectedChapter, setSelectedChapter] = useState(1);
-  const [bookModalVisible, setBookModalVisible] = useState(false);
-  const [chapterModalVisible, setChapterModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const filteredBooks = bookNames.filter((book) =>
-    book.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const flatListRef = useRef<FlatList>(null);
+  const [isBookModalVisible, setBookModalVisible] = useState(false);
+  const [isChapterModalVisible, setChapterModalVisible] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const flatListRef = useRef<FlatList<any>>(null);
 
   useEffect(() => {
     async function prepare() {
       try {
-        await Font.loadAsync({
-          'times-new-roman': require('./assets/fonts/times.ttf'),
-        });
+        await Font.loadAsync({ 'times-new-roman': require('./assets/fonts/times.ttf') });
       } catch (e) {
         console.warn(e);
       } finally {
-        setAppIsReady(true);
+        setIsReady(true);
         SplashScreen.hideAsync();
       }
     }
@@ -57,366 +38,104 @@ export default function App() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (appIsReady) {
-      await SplashScreen.hideAsync();
-    }
-  }, [appIsReady]);
+    if (isReady) await SplashScreen.hideAsync();
+  }, [isReady]);
 
-  if (!appIsReady) {
-    return null;
-  }
+  const bookNames = Object.keys(bibleData);
+  const currentBookIndex = bookNames.indexOf(selectedBook);
+  const chapterCount = Object.keys(bibleData[selectedBook]).length;
+  const chapterList = Array.from({ length: chapterCount }, (_, i) => i + 1);
 
-  const handleBookSelect = (book: string) => {
-    setSelectedBook(book);
-    setSelectedChapter(1); 
-    setBookModalVisible(false);
-    scrollToTop();
-  };
+  const filteredBookNames = useMemo(() =>
+    bookNames.filter((name) => name.toLowerCase().includes(searchText.toLowerCase())),
+    [searchText, bookNames]
+  );
 
-  const handleChapterSelect = (chapter: number) => {
-    setSelectedChapter(chapter);
-    setChapterModalVisible(false);
-    scrollToTop();
-  };
+  const isFirstChapter = currentBookIndex === 0 && selectedChapter === 1;
+  const isLastChapter =
+    currentBookIndex === bookNames.length - 1 && selectedChapter === chapterCount;
 
   const scrollToTop = () => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   };
 
-  const goToNext = () => {
-    const currentBookIndex = bookNames.indexOf(selectedBook);
-    const chapterCount = Object.keys(bibleData[selectedBook]).length;
+  const onSelectBook = (book: string) => {
+    setSelectedBook(book);
+    setSelectedChapter(1);
+    setBookModalVisible(false);
+    scrollToTop();
+  };
 
+  const onSelectChapter = (chapter: number) => {
+    setSelectedChapter(chapter);
+    setChapterModalVisible(false);
+    scrollToTop();
+  };
+
+  const goToPrevious = () => {
+    if (selectedChapter > 1) {
+      setSelectedChapter((prev) => prev - 1);
+    } else if (currentBookIndex > 0) {
+      const prevBook = bookNames[currentBookIndex - 1];
+      const lastChapter = Object.keys(bibleData[prevBook]).length;
+      setSelectedBook(prevBook);
+      setSelectedChapter(lastChapter);
+    }
+    scrollToTop();
+  };
+
+  const goToNext = () => {
     if (selectedChapter < chapterCount) {
-      setSelectedChapter((prev) => {
-        scrollToTop();
-        return prev + 1;
-      });
+      setSelectedChapter((prev) => prev + 1);
     } else if (currentBookIndex < bookNames.length - 1) {
       const nextBook = bookNames[currentBookIndex + 1];
       setSelectedBook(nextBook);
       setSelectedChapter(1);
-      scrollToTop();
     }
+    scrollToTop();
   };
 
-  const goToPrevious = () => {
-    const currentBookIndex = bookNames.indexOf(selectedBook);
+  if (!isReady) return null;
 
-    if (selectedChapter > 1) {
-      setSelectedChapter((prev) => {
-        scrollToTop();
-        return prev - 1;
-      });
-    } else if (currentBookIndex > 0) {
-      const previousBook = bookNames[currentBookIndex - 1];
-      const lastChapterOfPreviousBook = Object.keys(
-        bibleData[previousBook]
-      ).length;
-
-      setSelectedBook(previousBook);
-      setSelectedChapter(lastChapterOfPreviousBook);
-      scrollToTop();
-    }
-  };
-
-  const chapterCount = Object.keys(bibleData[selectedBook]).length;
-  const chapterList = Array.from({ length: chapterCount }, (_, i) => i + 1);
-  const currentBookIndex = bookNames.indexOf(selectedBook);
-  const isFirstChapter =
-    currentBookIndex === 0 && selectedChapter === 1;
-  const isLastChapter =
-    currentBookIndex === bookNames.length - 1 &&
-    selectedChapter ===
-      Object.keys(bibleData[selectedBook]).length;
+  const currentVerses = Object.entries(bibleData[selectedBook][selectedChapter.toString()]);
 
   return (
-    <View style={styles.view}>
+    <View style={styles.view} onLayout={onLayoutRootView}>
       <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => setBookModalVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.bookButton}>{selectedBook}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setChapterModalVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.chapterButton}>{selectedChapter}</Text>
-        </TouchableOpacity>
+        <Pressable style={styles.bookButton} onPress={() => setBookModalVisible(true)}>
+          <Text style={styles.topBarText}>{selectedBook}</Text>
+        </Pressable>
+        <Pressable style={styles.chapterButton} onPress={() => setChapterModalVisible(true)}>
+          <Text style={styles.topBarText}>{selectedChapter}</Text>
+        </Pressable>
       </View>
 
-      {/* Book Modal */}
-      <Modal 
-        isVisible={bookModalVisible} 
-        onSwipeComplete={() => setBookModalVisible(false)}
-        swipeDirection='down'
-        style={styles.bookModal}
-        propagateSwipe={true}
-      > 
-        <View style={styles.modalContent}>
-          <View style={styles.modalHandle}>
-            {/* Search Bar */}
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#aaa"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              multiline={false}
-            />
-            <TouchableOpacity onPress={() => setBookModalVisible(false)}>
-              <Text style={styles.modalClose}>✕</Text>
-            </TouchableOpacity>
-          </View>
+      <BookSelectorModal
+        isVisible={isBookModalVisible}
+        onClose={() => setBookModalVisible(false)}
+        searchText={searchText}
+        onSearchChange={setSearchText}
+        filteredBooks={filteredBookNames}
+        onSelectBook={onSelectBook}
+      />
 
-          <FlatList
-            data={filteredBooks}
-            keyExtractor={(item) => item}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.bookItem}
-                onPress={() => handleBookSelect(item)}
-                activeOpacity={0.7}
-                accessibilityLabel={`Select book ${item}`}
-              >
-                <Text style={styles.bookText}>{item}</Text>
-              </TouchableOpacity>
-            )}
-            ListFooterComponent={<View style={{ height: 100}} />}
-          />
-        </View>
-      </Modal>
+      <ChapterSelectorModal
+        isVisible={isChapterModalVisible}
+        onClose={() => setChapterModalVisible(false)}
+        chapterList={chapterList}
+        onSelectChapter={onSelectChapter}
+      />
 
-      {/* Chapter Modal */}
-      <Modal 
-        isVisible={chapterModalVisible} 
-        onSwipeComplete={() => setChapterModalVisible(false)}
-        swipeDirection='down'
-        style={styles.chapterModal}
-        propagateSwipe={true}
-      >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHandle}>
-            <Text style={styles.modalTitle}>Chapters</Text>
-            <TouchableOpacity onPress={() => setChapterModalVisible(false)}>
-              <Text style={styles.modalClose}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={chapterList}
-            keyExtractor={(item) => item.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.chapterItem}
-                onPress={() => handleChapterSelect(item)}
-              >
-                <Text style={styles.chapterText}>Ch. {item}</Text>
-              </TouchableOpacity>
-            )}
-            ListFooterComponent={<View style={{ height: 100}} />}
-          />
-        </View>
-      </Modal>
-
-      {/* Verses List */}
       <View style={styles.verseContainer}>
-        <FlatList
-          ListHeaderComponent={<View style={{ height: 10}} />}
-          ref={flatListRef}
-          data={Object.entries(
-            bibleData[selectedBook][selectedChapter.toString()]
-          )}
-          keyExtractor={([verseNumber]) => verseNumber}
-          renderItem={({ item: [verseNumber, verseText] }) => (
-            <Text style={styles.verseText}>
-              <Text style={styles.verseNumber}>{verseNumber}. </Text>
-              {verseText}
-            </Text>
-          )}
-          ListFooterComponent={<View style={{ height: 100 }} />}
-        />
+        <VerseList verses={currentVerses} />
       </View>
 
-      <View style={styles.navButtonsContainer}>
-        {isFirstChapter ? (
-          <View style={styles.navButtonPlaceholder} />
-        ) : (
-          <TouchableHighlight
-            onPress={goToPrevious}
-            style={styles.navButton}
-            underlayColor='#8f8f8fff'
-          >
-            <Text style={styles.navButtonText}>←</Text>
-          </TouchableHighlight>
-        )}
-
-        {isLastChapter ? (
-          <View style={styles.navButtonPlaceholder} />
-        ) : (
-          <TouchableHighlight
-            onPress={goToNext}
-            style={styles.navButton}
-            underlayColor='#8f8f8fff'
-          >
-            <Text style={styles.navButtonText}>→</Text>
-          </TouchableHighlight>
-        )}
-      </View>
+      <NavigationControls
+        onNext={goToNext}
+        onPrevious={goToPrevious}
+        isFirst={isFirstChapter}
+        isLast={isLastChapter}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  view: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  topBar: {
-    backgroundColor: '#000',
-    padding: 7,
-    flexDirection: 'row', 
-    alignItems: 'center',
-    borderBottomWidth: 0.2,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  bookButton: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: 'bold',
-    backgroundColor: '#696969',
-    paddingVertical: 7,
-    paddingHorizontal: 15,
-    marginTop: 40,
-    marginRight: 1,
-    marginLeft: 10,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
-  },
-  chapterButton: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: 'bold',
-    backgroundColor: '#696969',
-    paddingVertical: 7,
-    paddingHorizontal: 15,
-    marginTop: 40,
-    marginRight: 10,
-    marginLeft: 1,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  bookItem: {
-    padding: 20,
-  },
-  bookText: {
-    color: 'white',
-    fontSize: 17,
-  },
-  chapterItem: {
-    padding: 20,
-  },
-  chapterText: {
-    color: 'white',
-    fontSize: 20,
-  },
-  verseContainer: {
-    flex: 1,
-    paddingHorizontal: 7,
-  },
-  verseText: {
-    fontFamily: 'times-new-roman',
-    color: 'white',
-    fontSize: 23,
-    marginBottom: 10,
-    lineHeight: 30,
-  },
-  verseNumber: {
-    fontWeight: 'bold',
-    color: '#ccc',
-    fontSize: 13,
-  },
-  navButtonsContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    marginBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0)',
-  },
-  navButtonPlaceholder: {
-    width: 50,
-    height: 50,
-  },
-  navButton: {
-    position: 'static',
-    width: 50,
-    height: 50,
-    backgroundColor: '#696969',
-    padding: 10,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navButtonText: {
-    color: 'white',
-    fontSize: 25,
-    fontWeight: 'bold',
-  },
-
-  bookModal: {
-    justifyContent: 'flex-start',
-    backgroundColor: 'black',
-    margin: 0,
-    marginTop: 50,
-  },
-  chapterModal: {
-    justifyContent: 'flex-start',
-    backgroundColor: 'black',
-    margin: 0,
-    marginTop: 50,
-  },
-  modalHandle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#111',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-
-  modalTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-
-  modalClose: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  modalContent: {
-    backgroundColor: '#000',
-    borderRadius: 20,
-  },
-
-  searchInput: {
-    height: 40,  
-    width: '90%', 
-    backgroundColor: '#222',
-    color: 'white',
-    paddingHorizontal: 12,
-    fontSize: 16, 
-    borderRadius: 8,
-  },
-});
