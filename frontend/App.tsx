@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   View,
   Text,
   TextInput,
   TouchableHighlight,
+  Pressable,
   FlatList,
   StyleSheet,
   StatusBar,
@@ -30,6 +32,7 @@ export default function App() {
   const [bookModalVisible, setBookModalVisible] = useState(false);
   const [chapterModalVisible, setChapterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [translateMode, setTranslateMode] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const bookNames = useMemo(() => Object.keys(bibleData), []);
@@ -120,20 +123,32 @@ export default function App() {
   return (
     <View style={styles.container} onLayout={onLayoutRootView}>
       <View style={styles.topBar}>
-        <TouchableHighlight
-          onPress={() => setBookModalVisible(true)}
-          underlayColor="#555"
-          style={styles.bookButton}
+        <View style={styles.bookChapterContainer}>
+          <TouchableHighlight
+            onPress={() => setBookModalVisible(true)}
+            underlayColor="#555"
+            style={styles.bookButton}
+          >
+            <Text style={styles.buttonText}>{selectedBook}</Text>
+          </TouchableHighlight>
+          <TouchableHighlight
+            onPress={() => setChapterModalVisible(true)}
+            underlayColor="#555"
+            style={styles.chapterButton}
+          >
+            <Text style={styles.buttonText}>{selectedChapter}</Text>
+          </TouchableHighlight>
+        </View>
+
+        <Pressable
+          onPress={() => setTranslateMode(prev => !prev)}
+          style={styles.modeToggleButton}
         >
-          <Text style={styles.buttonText}>{selectedBook}</Text>
-        </TouchableHighlight>
-        <TouchableHighlight
-          onPress={() => setChapterModalVisible(true)}
-          underlayColor="#555"
-          style={styles.chapterButton}
-        >
-          <Text style={styles.buttonText}>{selectedChapter}</Text>
-        </TouchableHighlight>
+          <Icon 
+            style={styles.translateIcon}
+            name={translateMode ? "translate" : "translate-off"}
+          />
+        </Pressable>
       </View>
 
       {/* Book Modal */}
@@ -146,21 +161,31 @@ export default function App() {
       >
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#aaa"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              multiline={false}
-            />
-            <TouchableHighlight
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search"
+                placeholderTextColor="#aaa"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                multiline={false}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable
+                  onPress={() => setSearchQuery("")}
+                  style={styles.clearButton}
+                >
+                  <Text style={styles.clearButtonText}>✕</Text>
+                </Pressable>
+              )}
+            </View>
+
+            <Pressable
               onPress={() => setBookModalVisible(false)}
-              underlayColor="#333"
               style={styles.modalCloseButton}
             >
-              <Text style={styles.modalClose}>✕</Text>
-            </TouchableHighlight>
+              <Text style={styles.modalClose}>Cancel</Text>
+            </Pressable>
           </View>
           <FlatList
             data={filteredBooks}
@@ -191,13 +216,12 @@ export default function App() {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Chapters</Text>
-            <TouchableHighlight
+            <Pressable
               onPress={() => setChapterModalVisible(false)}
-              underlayColor="#333"
               style={styles.modalCloseButton}
             >
-              <Text style={styles.modalClose}>✕</Text>
-            </TouchableHighlight>
+              <Text style={styles.modalClose}>Cancel</Text>
+            </Pressable>
           </View>
           <FlatList
             data={chapterList}
@@ -270,12 +294,18 @@ const styles = StyleSheet.create({
   topBar: {
     backgroundColor: "#000",
     paddingHorizontal: 10,
-    paddingTop: StatusBar.currentHeight || 40,
+    paddingTop: StatusBar.currentHeight || 50,
     paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(255, 255, 255, 0.2)",
+  },
+  bookChapterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: "white",
@@ -289,6 +319,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderTopLeftRadius: 20,
     borderBottomLeftRadius: 20,
+    marginRight: 1,
   },
   chapterButton: {
     backgroundColor: "#696969",
@@ -296,6 +327,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
+    marginLeft: 1,
   },
   bookItem: {
     paddingVertical: 16,
@@ -375,7 +407,7 @@ const styles = StyleSheet.create({
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
     paddingVertical: 15,
     backgroundColor: "#111",
     borderTopLeftRadius: 20,
@@ -391,15 +423,19 @@ const styles = StyleSheet.create({
   },
   modalClose: {
     color: "white",
-    fontSize: 22,
-    fontWeight: "bold",
+    fontSize: 15,
   },
   modalCloseButton: {
     padding: 5,
     borderRadius: 20,
   },
-  searchInput: {
+  searchContainer: {
+    flex: 1,
+    position: 'relative',
+    justifyContent: 'center',
     height: 40,
+  },
+  searchInput: {
     flex: 1,
     backgroundColor: "#222",
     color: "white",
@@ -408,4 +444,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
+  clearButton: {
+    position: "absolute",
+    right: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 10,
+  },
+  clearButtonText: {
+    color: "#aaa",
+    fontSize: 18,
+  },
+
+  modeToggleButton: {
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  translateIcon: {
+    fontSize: 27,
+    color: 'white',
+  }
 });
