@@ -26,6 +26,11 @@ const bibleData = rawBibleData as {
 
 SplashScreen.preventAutoHideAsync();
 
+// Navigation button dimensions for consistent spacing
+const NAVIGATION_BUTTON_HEIGHT = 50;
+const NAVIGATION_BOTTOM_PADDING = 25;
+const NAVIGATION_TOTAL_HEIGHT = NAVIGATION_BUTTON_HEIGHT + NAVIGATION_BOTTOM_PADDING;
+
 const BookItem = memo(({ item, onPress }: { item: string; onPress: (item: string) => void }) => (
   <TouchableHighlight
     onPress={() => onPress(item)}
@@ -88,7 +93,6 @@ export default function App() {
     [debouncedSearchQuery, bookNames]
   );
 
-  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -328,17 +332,17 @@ export default function App() {
           data={verseData}
           keyExtractor={([verseNumber]) => `${selectedBook}-${selectedChapter}-${verseNumber}`}
           removeClippedSubviews={true}
-          maxToRenderPerBatch={5}
-          windowSize={5}
-          initialNumToRender={8}
-          updateCellsBatchingPeriod={100}
+          maxToRenderPerBatch={10}
+          windowSize={8}
+          initialNumToRender={12}
+          updateCellsBatchingPeriod={200}
           getItemLayout={(data, index) => ({
-            length: 54, // Approximate height of each verse
+            length: 54,
             offset: 54 * index,
             index,
           })}
           renderItem={renderVerseItem}
-          ListFooterComponent={<View style={{ height: 100 }} />}
+          ListFooterComponent={<View style={{ height: NAVIGATION_TOTAL_HEIGHT }} />}
         />
       </View>
 
@@ -460,15 +464,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 25,
+    paddingBottom: NAVIGATION_BOTTOM_PADDING,
   },
   navButtonPlaceholder: {
-    width: 50,
-    height: 50,
+    width: NAVIGATION_BUTTON_HEIGHT,
+    height: NAVIGATION_BUTTON_HEIGHT,
   },
   navButton: {
-    width: 50,
-    height: 50,
+    width: NAVIGATION_BUTTON_HEIGHT,
+    height: NAVIGATION_BUTTON_HEIGHT,
     backgroundColor: "#696969",
     borderRadius: 25,
     alignItems: "center",
