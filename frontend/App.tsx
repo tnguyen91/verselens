@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   View,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
+import { PanGestureHandler, State, GestureHandlerRootView } from "react-native-gesture-handler";
 import Modal from "react-native-modal";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
@@ -25,6 +26,38 @@ const bibleData = rawBibleData as {
 
 SplashScreen.preventAutoHideAsync();
 
+const BookItem = memo(({ item, onPress }: { item: string; onPress: (item: string) => void }) => (
+  <TouchableHighlight
+    onPress={() => onPress(item)}
+    underlayColor="#222"
+    style={styles.bookItem}
+  >
+    <Text style={styles.bookItemText}>{item}</Text>
+  </TouchableHighlight>
+));
+
+const ChapterItem = memo(({ item, onPress }: { item: number; onPress: (item: number) => void }) => (
+  <TouchableHighlight
+    onPress={() => onPress(item)}
+    underlayColor="#222"
+    style={styles.chapterItem}
+  >
+    <Text style={styles.chapterItemText}>Ch. {item}</Text>
+  </TouchableHighlight>
+));
+
+const VerseItem = memo(({ verseNumber, verseText }: { verseNumber: string; verseText: string }) => (
+  <View style={styles.verseItemContainer}>
+    <Text style={styles.verse}>
+      <Text style={styles.verseLabel}>{verseNumber}. </Text>
+      {verseText}
+    </Text>
+  </View>
+), (prevProps, nextProps) => {
+  return prevProps.verseNumber === nextProps.verseNumber && 
+         prevProps.verseText === nextProps.verseText;
+});
+
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [selectedBook, setSelectedBook] = useState(Object.keys(bibleData)[0]);
@@ -32,22 +65,37 @@ export default function App() {
   const [bookModalVisible, setBookModalVisible] = useState(false);
   const [chapterModalVisible, setChapterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [translateMode, setTranslateMode] = useState(false);
+  const [lastTap, setLastTap] = useState<number | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const bookNames = useMemo(() => Object.keys(bibleData), []);
   const chapterCount = Object.keys(bibleData[selectedBook]).length;
   const chapterList = useMemo(() => Array.from({ length: chapterCount }, (_, i) => i + 1), [selectedBook]);
+  const verseData = useMemo(() => 
+    Object.entries(bibleData[selectedBook][selectedChapter.toString()]),
+    [selectedBook, selectedChapter]
+  );
   const currentBookIndex = bookNames.indexOf(selectedBook);
   const isFirstChapter = currentBookIndex === 0 && selectedChapter === 1;
   const isLastChapter = currentBookIndex === bookNames.length - 1 && selectedChapter === chapterCount;
   const filteredBooks = useMemo(
     () =>
       bookNames.filter((book) =>
-        book.toLowerCase().includes(searchQuery.toLowerCase())
+        book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       ),
-    [searchQuery, bookNames]
+    [debouncedSearchQuery, bookNames]
   );
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     async function prepare() {
@@ -71,28 +119,24 @@ export default function App() {
     }
   }, [appIsReady]);
 
-  if (!appIsReady) {
-    return null;
-  }
-
-  const scrollToTop = () => {
+  const scrollToTop = useCallback(() => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-  };
+  }, []);
 
-  const handleBookSelect = (book: string) => {
+  const handleBookSelect = useCallback((book: string) => {
     setSelectedBook(book);
     setSelectedChapter(1);
     setBookModalVisible(false);
     scrollToTop();
-  };
+  }, [scrollToTop]);
 
-  const handleChapterSelect = (chapter: number) => {
+  const handleChapterSelect = useCallback((chapter: number) => {
     setSelectedChapter(chapter);
     setChapterModalVisible(false);
     scrollToTop();
-  };
+  }, [scrollToTop]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     if (selectedChapter < chapterCount) {
       setSelectedChapter((prev) => {
         scrollToTop();
@@ -103,9 +147,9 @@ export default function App() {
       setSelectedChapter(1);
       scrollToTop();
     }
-  };
+  }, [selectedChapter, chapterCount, currentBookIndex, bookNames, scrollToTop]);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     if (selectedChapter > 1) {
       setSelectedChapter((prev) => {
         scrollToTop();
@@ -118,11 +162,51 @@ export default function App() {
       setSelectedChapter(lastChapter);
       scrollToTop();
     }
-  };
+  }, [selectedChapter, currentBookIndex, bookNames, scrollToTop]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+  }, []);
+
+  const toggleTranslateMode = useCallback(() => {
+    setTranslateMode(prev => !prev);
+  }, []);
+
+  const handleTopBarDoubleTap = useCallback(() => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+    
+    if (lastTap && (now - lastTap) < DOUBLE_PRESS_DELAY) {
+      scrollToTop();
+    }
+    setLastTap(now);
+  }, [lastTap, scrollToTop]);
+
+  const handleGesture = useCallback((event: any) => {
+    if (event.nativeEvent.state === State.END) {
+      const { translationX } = event.nativeEvent;
+      const threshold = 100;
+      
+      if (translationX > threshold && !isFirstChapter) {
+        goToPrevious();
+      } else if (translationX < -threshold && !isLastChapter) {
+        goToNext();
+      }
+    }
+  }, [goToPrevious, goToNext, isFirstChapter, isLastChapter]);
+
+  const renderVerseItem = useCallback(({ item: [verseNumber, verseText] }: { item: [string, string] }) => (
+    <VerseItem verseNumber={verseNumber} verseText={verseText} />
+  ), []);
+
+  if (!appIsReady) {
+    return null;
+  }
 
   return (
-    <View style={styles.container} onLayout={onLayoutRootView}>
-      <View style={styles.topBar}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container} onLayout={onLayoutRootView}>
+        <Pressable onPress={handleTopBarDoubleTap} style={styles.topBar}>
         <View style={styles.bookChapterContainer}>
           <TouchableHighlight
             onPress={() => setBookModalVisible(true)}
@@ -141,7 +225,7 @@ export default function App() {
         </View>
 
         <Pressable
-          onPress={() => setTranslateMode(prev => !prev)}
+          onPress={toggleTranslateMode}
           style={styles.modeToggleButton}
         >
           <Icon 
@@ -149,7 +233,7 @@ export default function App() {
             name={translateMode ? "translate" : "translate-off"}
           />
         </Pressable>
-      </View>
+      </Pressable>
 
       {/* Book Modal */}
       <Modal
@@ -164,15 +248,19 @@ export default function App() {
             <View style={styles.searchContainer}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search"
+                placeholder="Search books..."
                 placeholderTextColor="#aaa"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 multiline={false}
+                autoFocus={true}
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
               {searchQuery.length > 0 && (
                 <Pressable
-                  onPress={() => setSearchQuery("")}
+                  onPress={clearSearch}
                   style={styles.clearButton}
                 >
                   <Text style={styles.clearButtonText}>✕</Text>
@@ -191,14 +279,17 @@ export default function App() {
             data={filteredBooks}
             keyExtractor={(item) => item}
             keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={10}
+            getItemLayout={(data, index) => ({
+              length: 60,
+              offset: 60 * index,
+              index,
+            })}
             renderItem={({ item }) => (
-              <TouchableHighlight
-                onPress={() => handleBookSelect(item)}
-                underlayColor="#222"
-                style={styles.bookItem}
-              >
-                <Text style={styles.bookItemText}>{item}</Text>
-              </TouchableHighlight>
+              <BookItem item={item} onPress={handleBookSelect} />
             )}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
@@ -226,14 +317,17 @@ export default function App() {
           <FlatList
             data={chapterList}
             keyExtractor={(item) => item.toString()}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={15}
+            getItemLayout={(data, index) => ({
+              length: 60,
+              offset: 60 * index,
+              index,
+            })}
             renderItem={({ item }) => (
-              <TouchableHighlight
-                onPress={() => handleChapterSelect(item)}
-                underlayColor="#222"
-                style={styles.chapterItem}
-              >
-                <Text style={styles.chapterItemText}>Ch. {item}</Text>
-              </TouchableHighlight>
+              <ChapterItem item={item} onPress={handleChapterSelect} />
             )}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
@@ -241,21 +335,28 @@ export default function App() {
       </Modal>
 
       {/* Verse List */}
-      <View style={styles.verseContainer}>
-        <FlatList
-          ref={flatListRef}
-          ListHeaderComponent={<View style={{ height: 10 }} />}
-          data={Object.entries(bibleData[selectedBook][selectedChapter.toString()])}
-          keyExtractor={([verseNumber]) => verseNumber}
-          renderItem={({ item: [verseNumber, verseText] }) => (
-            <Text style={styles.verse}>
-              <Text style={styles.verseLabel}>{verseNumber}. </Text>
-              {verseText}
-            </Text>
-          )}
-          ListFooterComponent={<View style={{ height: 100 }} />}
-        />
-      </View>
+      <PanGestureHandler onHandlerStateChange={handleGesture}>
+        <View style={styles.verseContainer}>
+          <FlatList
+            ref={flatListRef}
+            ListHeaderComponent={<View style={{ height: 10 }} />}
+            data={verseData}
+            keyExtractor={([verseNumber]) => `${selectedBook}-${selectedChapter}-${verseNumber}`}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={5}
+            windowSize={5}
+            initialNumToRender={8}
+            updateCellsBatchingPeriod={100}
+            getItemLayout={(data, index) => ({
+              length: 54, // Approximate height of each verse
+              offset: 54 * index,
+              index,
+            })}
+            renderItem={renderVerseItem}
+            ListFooterComponent={<View style={{ height: 100 }} />}
+          />
+        </View>
+      </PanGestureHandler>
 
       {/* Navigation */}
       <View style={styles.navButtonsContainer}>
@@ -283,6 +384,7 @@ export default function App() {
         )}
       </View>
     </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -349,12 +451,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 10,
   },
+  verseItemContainer: {
+    marginBottom: 2,
+  },
   verse: {
     fontFamily: "times-new-roman",
     color: "white",
     fontSize: 22,
     marginBottom: 12,
     lineHeight: 30,
+    includeFontPadding: false,
+    textAlignVertical: 'top',
   },
   verseLabel: {
     fontWeight: "bold",
@@ -461,9 +568,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    padding: 8,
   },
   translateIcon: {
     fontSize: 27,
     color: 'white',
-  }
+  },
+  bookItemActive: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: "#333",
+  },
+  chapterItemActive: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: "#333",
+  },
 });
