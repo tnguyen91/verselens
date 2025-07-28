@@ -9,6 +9,7 @@ import {
   FlatList,
   StyleSheet,
   StatusBar,
+  ListRenderItem,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Modal from "react-native-modal";
@@ -16,22 +17,58 @@ import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 
 import rawBibleData from "./assets/BibleTranslations/ESV/ESV_bible.json";
-const bibleData = rawBibleData as {
+
+interface BibleData {
   [bookName: string]: {
     [chapterNumber: string]: {
       [verseNumber: string]: string;
     };
   };
-};
+}
+
+interface VerseData {
+  verseNumber: string;
+  verseText: string;
+}
+
+const bibleData = rawBibleData as BibleData;
 
 SplashScreen.preventAutoHideAsync();
 
-// Navigation button dimensions for consistent spacing
 const NAVIGATION_BUTTON_HEIGHT = 50;
 const NAVIGATION_BOTTOM_PADDING = 25;
 const NAVIGATION_TOTAL_HEIGHT = NAVIGATION_BUTTON_HEIGHT + NAVIGATION_BOTTOM_PADDING;
 
-const BookItem = memo(({ item, onPress }: { item: string; onPress: (item: string) => void }) => (
+const FLATLIST_CONFIG = {
+  VERSE: {
+    ITEM_HEIGHT: 54,
+    MAX_TO_RENDER_PER_BATCH: 10,
+    WINDOW_SIZE: 8,
+    INITIAL_NUM_TO_RENDER: 12,
+    UPDATE_CELLS_BATCHING_PERIOD: 200,
+  },
+  BOOK: {
+    ITEM_HEIGHT: 60,
+    MAX_TO_RENDER_PER_BATCH: 10,
+    WINDOW_SIZE: 10,
+    INITIAL_NUM_TO_RENDER: 10,
+  },
+  CHAPTER: {
+    ITEM_HEIGHT: 60,
+    MAX_TO_RENDER_PER_BATCH: 10,
+    WINDOW_SIZE: 10,
+    INITIAL_NUM_TO_RENDER: 15,
+  },
+} as const;
+
+const DOUBLE_PRESS_DELAY = 300;
+
+interface BookItemProps {
+  item: string;
+  onPress: (item: string) => void;
+}
+
+const BookItem = memo<BookItemProps>(({ item, onPress }) => (
   <TouchableHighlight
     onPress={() => onPress(item)}
     underlayColor="#222"
@@ -40,8 +77,14 @@ const BookItem = memo(({ item, onPress }: { item: string; onPress: (item: string
     <Text style={styles.bookItemText}>{item}</Text>
   </TouchableHighlight>
 ));
+BookItem.displayName = 'BookItem';
 
-const ChapterItem = memo(({ item, onPress }: { item: number; onPress: (item: number) => void }) => (
+interface ChapterItemProps {
+  item: number;
+  onPress: (item: number) => void;
+}
+
+const ChapterItem = memo<ChapterItemProps>(({ item, onPress }) => (
   <TouchableHighlight
     onPress={() => onPress(item)}
     underlayColor="#222"
@@ -50,8 +93,14 @@ const ChapterItem = memo(({ item, onPress }: { item: number; onPress: (item: num
     <Text style={styles.chapterItemText}>Ch. {item}</Text>
   </TouchableHighlight>
 ));
+ChapterItem.displayName = 'ChapterItem';
 
-const VerseItem = memo(({ verseNumber, verseText }: { verseNumber: string; verseText: string }) => (
+interface VerseItemProps {
+  verseNumber: string;
+  verseText: string;
+}
+
+const VerseItem = memo<VerseItemProps>(({ verseNumber, verseText }) => (
   <View style={styles.verseItemContainer}>
     <Text style={styles.verse}>
       <Text style={styles.verseLabel}>{verseNumber}. </Text>
@@ -62,34 +111,44 @@ const VerseItem = memo(({ verseNumber, verseText }: { verseNumber: string; verse
   return prevProps.verseNumber === nextProps.verseNumber && 
          prevProps.verseText === nextProps.verseText;
 });
+VerseItem.displayName = 'VerseItem';
 
-export default function App() {
-  const [appIsReady, setAppIsReady] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(Object.keys(bibleData)[0]);
-  const [selectedChapter, setSelectedChapter] = useState(1);
-  const [bookModalVisible, setBookModalVisible] = useState(false);
-  const [chapterModalVisible, setChapterModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [translateMode, setTranslateMode] = useState(false);
+export default function App(): React.ReactElement | null {
+  const [appIsReady, setAppIsReady] = useState<boolean>(false);
+  const [selectedBook, setSelectedBook] = useState<string>(Object.keys(bibleData)[0]);
+  const [selectedChapter, setSelectedChapter] = useState<number>(1);
+  const [bookModalVisible, setBookModalVisible] = useState<boolean>(false);
+  const [chapterModalVisible, setChapterModalVisible] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+  const [translateMode, setTranslateMode] = useState<boolean>(false);
   const [lastTap, setLastTap] = useState<number | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
+
   const bookNames = useMemo(() => Object.keys(bibleData), []);
-  const chapterCount = Object.keys(bibleData[selectedBook]).length;
-  const chapterList = useMemo(() => Array.from({ length: chapterCount }, (_, i) => i + 1), [selectedBook]);
+  const chapterCount = useMemo(() => Object.keys(bibleData[selectedBook]).length, [selectedBook]);
+  const chapterList = useMemo(() => 
+    Array.from({ length: chapterCount }, (_, i) => i + 1), 
+    [chapterCount]
+  );
   const verseData = useMemo(() => 
     Object.entries(bibleData[selectedBook][selectedChapter.toString()]),
     [selectedBook, selectedChapter]
   );
-  const currentBookIndex = bookNames.indexOf(selectedBook);
-  const isFirstChapter = currentBookIndex === 0 && selectedChapter === 1;
-  const isLastChapter = currentBookIndex === bookNames.length - 1 && selectedChapter === chapterCount;
+  const currentBookIndex = useMemo(() => bookNames.indexOf(selectedBook), [bookNames, selectedBook]);
+  const isFirstChapter = useMemo(() => 
+    currentBookIndex === 0 && selectedChapter === 1, 
+    [currentBookIndex, selectedChapter]
+  );
+  const isLastChapter = useMemo(() => 
+    currentBookIndex === bookNames.length - 1 && selectedChapter === chapterCount, 
+    [currentBookIndex, bookNames.length, selectedChapter, chapterCount]
+  );
   const filteredBooks = useMemo(
-    () =>
-      bookNames.filter((book) =>
-        book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-      ),
+    () => bookNames.filter((book) =>
+      book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    ),
     [debouncedSearchQuery, bookNames]
   );
 
@@ -102,45 +161,46 @@ export default function App() {
   }, [searchQuery]);
 
   useEffect(() => {
-    async function prepare() {
+    const initializeApp = async (): Promise<void> => {
       try {
         await Font.loadAsync({
           "times-new-roman": require("./assets/fonts/times.ttf"),
         });
-      } catch (e) {
-        console.warn(e);
+      } catch (error) {
+        console.warn('Font loading error:', error);
       } finally {
         setAppIsReady(true);
-        SplashScreen.hideAsync();
+        await SplashScreen.hideAsync();
       }
-    }
-    prepare();
+    };
+
+    initializeApp();
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
+  const onLayoutRootView = useCallback(async (): Promise<void> => {
     if (appIsReady) {
       await SplashScreen.hideAsync();
     }
   }, [appIsReady]);
 
-  const scrollToTop = useCallback(() => {
+  const scrollToTop = useCallback((): void => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
 
-  const handleBookSelect = useCallback((book: string) => {
+  const handleBookSelect = useCallback((book: string): void => {
     setSelectedBook(book);
     setSelectedChapter(1);
     setBookModalVisible(false);
     scrollToTop();
   }, [scrollToTop]);
 
-  const handleChapterSelect = useCallback((chapter: number) => {
+  const handleChapterSelect = useCallback((chapter: number): void => {
     setSelectedChapter(chapter);
     setChapterModalVisible(false);
     scrollToTop();
   }, [scrollToTop]);
 
-  const goToNext = useCallback(() => {
+  const goToNext = useCallback((): void => {
     if (selectedChapter < chapterCount) {
       setSelectedChapter((prev) => {
         scrollToTop();
@@ -153,7 +213,7 @@ export default function App() {
     }
   }, [selectedChapter, chapterCount, currentBookIndex, bookNames, scrollToTop]);
 
-  const goToPrevious = useCallback(() => {
+  const goToPrevious = useCallback((): void => {
     if (selectedChapter > 1) {
       setSelectedChapter((prev) => {
         scrollToTop();
@@ -168,17 +228,16 @@ export default function App() {
     }
   }, [selectedChapter, currentBookIndex, bookNames, scrollToTop]);
 
-  const clearSearch = useCallback(() => {
+  const clearSearch = useCallback((): void => {
     setSearchQuery("");
   }, []);
 
-  const toggleTranslateMode = useCallback(() => {
+  const toggleTranslateMode = useCallback((): void => {
     setTranslateMode(prev => !prev);
   }, []);
 
-  const handleTopBarDoubleTap = useCallback(() => {
+  const handleTopBarDoubleTap = useCallback((): void => {
     const now = Date.now();
-    const DOUBLE_PRESS_DELAY = 300;
     
     if (lastTap && (now - lastTap) < DOUBLE_PRESS_DELAY) {
       scrollToTop();
@@ -186,9 +245,35 @@ export default function App() {
     setLastTap(now);
   }, [lastTap, scrollToTop]);
 
-  const renderVerseItem = useCallback(({ item: [verseNumber, verseText] }: { item: [string, string] }) => (
+  const renderVerseItem: ListRenderItem<[string, string]> = useCallback(({ item: [verseNumber, verseText] }) => (
     <VerseItem verseNumber={verseNumber} verseText={verseText} />
   ), []);
+
+  const renderBookItem: ListRenderItem<string> = useCallback(({ item }) => (
+    <BookItem item={item} onPress={handleBookSelect} />
+  ), [handleBookSelect]);
+
+  const renderChapterItem: ListRenderItem<number> = useCallback(({ item }) => (
+    <ChapterItem item={item} onPress={handleChapterSelect} />
+  ), [handleChapterSelect]);
+
+  const getVerseItemLayout = useCallback((data: any, index: number) => ({
+    length: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT,
+    offset: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  const getBookItemLayout = useCallback((data: any, index: number) => ({
+    length: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT,
+    offset: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  const getChapterItemLayout = useCallback((data: any, index: number) => ({
+    length: FLATLIST_CONFIG.CHAPTER.ITEM_HEIGHT,
+    offset: FLATLIST_CONFIG.CHAPTER.ITEM_HEIGHT * index,
+    index,
+  }), []);
 
   if (!appIsReady) {
     return null;
@@ -270,17 +355,11 @@ export default function App() {
             keyExtractor={(item) => item}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            initialNumToRender={10}
-            getItemLayout={(data, index) => ({
-              length: 60,
-              offset: 60 * index,
-              index,
-            })}
-            renderItem={({ item }) => (
-              <BookItem item={item} onPress={handleBookSelect} />
-            )}
+            maxToRenderPerBatch={FLATLIST_CONFIG.BOOK.MAX_TO_RENDER_PER_BATCH}
+            windowSize={FLATLIST_CONFIG.BOOK.WINDOW_SIZE}
+            initialNumToRender={FLATLIST_CONFIG.BOOK.INITIAL_NUM_TO_RENDER}
+            getItemLayout={getBookItemLayout}
+            renderItem={renderBookItem}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
         </View>
@@ -308,17 +387,11 @@ export default function App() {
             data={chapterList}
             keyExtractor={(item) => item.toString()}
             removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            initialNumToRender={15}
-            getItemLayout={(data, index) => ({
-              length: 60,
-              offset: 60 * index,
-              index,
-            })}
-            renderItem={({ item }) => (
-              <ChapterItem item={item} onPress={handleChapterSelect} />
-            )}
+            maxToRenderPerBatch={FLATLIST_CONFIG.CHAPTER.MAX_TO_RENDER_PER_BATCH}
+            windowSize={FLATLIST_CONFIG.CHAPTER.WINDOW_SIZE}
+            initialNumToRender={FLATLIST_CONFIG.CHAPTER.INITIAL_NUM_TO_RENDER}
+            getItemLayout={getChapterItemLayout}
+            renderItem={renderChapterItem}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
         </View>
@@ -332,15 +405,11 @@ export default function App() {
           data={verseData}
           keyExtractor={([verseNumber]) => `${selectedBook}-${selectedChapter}-${verseNumber}`}
           removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
-          windowSize={8}
-          initialNumToRender={12}
-          updateCellsBatchingPeriod={200}
-          getItemLayout={(data, index) => ({
-            length: 54,
-            offset: 54 * index,
-            index,
-          })}
+          maxToRenderPerBatch={FLATLIST_CONFIG.VERSE.MAX_TO_RENDER_PER_BATCH}
+          windowSize={FLATLIST_CONFIG.VERSE.WINDOW_SIZE}
+          initialNumToRender={FLATLIST_CONFIG.VERSE.INITIAL_NUM_TO_RENDER}
+          updateCellsBatchingPeriod={FLATLIST_CONFIG.VERSE.UPDATE_CELLS_BATCHING_PERIOD}
+          getItemLayout={getVerseItemLayout}
           renderItem={renderVerseItem}
           ListFooterComponent={<View style={{ height: NAVIGATION_TOTAL_HEIGHT }} />}
         />
@@ -561,15 +630,5 @@ const styles = StyleSheet.create({
   translateIcon: {
     fontSize: 27,
     color: 'white',
-  },
-  bookItemActive: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: "#333",
-  },
-  chapterItemActive: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: "#333",
   },
 });
