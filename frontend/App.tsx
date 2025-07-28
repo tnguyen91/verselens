@@ -10,7 +10,7 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
-import { PanGestureHandler, State, GestureHandlerRootView } from "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Modal from "react-native-modal";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
@@ -182,19 +182,6 @@ export default function App() {
     setLastTap(now);
   }, [lastTap, scrollToTop]);
 
-  const handleGesture = useCallback((event: any) => {
-    if (event.nativeEvent.state === State.END) {
-      const { translationX } = event.nativeEvent;
-      const threshold = 100;
-      
-      if (translationX > threshold && !isFirstChapter) {
-        goToPrevious();
-      } else if (translationX < -threshold && !isLastChapter) {
-        goToNext();
-      }
-    }
-  }, [goToPrevious, goToNext, isFirstChapter, isLastChapter]);
-
   const renderVerseItem = useCallback(({ item: [verseNumber, verseText] }: { item: [string, string] }) => (
     <VerseItem verseNumber={verseNumber} verseText={verseText} />
   ), []);
@@ -334,28 +321,26 @@ export default function App() {
       </Modal>
 
       {/* Verse List */}
-      <PanGestureHandler onHandlerStateChange={handleGesture}>
-        <View style={styles.verseContainer}>
-          <FlatList
-            ref={flatListRef}
-            ListHeaderComponent={<View style={{ height: 10 }} />}
-            data={verseData}
-            keyExtractor={([verseNumber]) => `${selectedBook}-${selectedChapter}-${verseNumber}`}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={5}
-            windowSize={5}
-            initialNumToRender={8}
-            updateCellsBatchingPeriod={100}
-            getItemLayout={(data, index) => ({
-              length: 54, // Approximate height of each verse
-              offset: 54 * index,
-              index,
-            })}
-            renderItem={renderVerseItem}
-            ListFooterComponent={<View style={{ height: 100 }} />}
-          />
-        </View>
-      </PanGestureHandler>
+      <View style={styles.verseContainer}>
+        <FlatList
+          ref={flatListRef}
+          ListHeaderComponent={<View style={{ height: 10 }} />}
+          data={verseData}
+          keyExtractor={([verseNumber]) => `${selectedBook}-${selectedChapter}-${verseNumber}`}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          initialNumToRender={8}
+          updateCellsBatchingPeriod={100}
+          getItemLayout={(data, index) => ({
+            length: 54, // Approximate height of each verse
+            offset: 54 * index,
+            index,
+          })}
+          renderItem={renderVerseItem}
+          ListFooterComponent={<View style={{ height: 100 }} />}
+        />
+      </View>
 
       {/* Navigation */}
       <View style={styles.navButtonsContainer}>
