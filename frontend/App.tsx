@@ -253,7 +253,6 @@ export default function App() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 multiline={false}
-                autoFocus={true}
                 returnKeyType="search"
                 autoCapitalize="none"
                 autoCorrect={false}
