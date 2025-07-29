@@ -49,7 +49,7 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
           <View style={styles.bookItemContent}>
             <Text style={styles.bookItemText}>{item.bookName}</Text>
             <Text style={styles.expandIcon}>
-              {expandedBook === item.bookName ? '▼' : '▶'}
+              {expandedBook === item.bookName ? '▲' : '▼'}
             </Text>
           </View>
         </TouchableHighlight>
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.xl,
     ...SHADOWS.lg,
     overflow: 'hidden',
-    height: '100%', // Fixed height for consistent modal size
+    height: '100%',
   },
   
   modalHeader: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   
   listContainer: {
-    flex: 1, // Takes up remaining space in the modal
+    flex: 1,
   },
   
   searchContainer: {
