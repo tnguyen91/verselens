@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ListRenderItem,
   Keyboard,
+  Animated,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { ModalListItem } from '../types/bible';
@@ -38,18 +39,42 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   onBookToggle,
   onChapterSelect,
 }) => {
-  const [isContentVisible, setIsContentVisible] = useState(false);
+  const fadeAnim = useState(new Animated.Value(0))[0];
+  const slideAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
     if (isVisible) {
-      const timer = setTimeout(() => {
-        setIsContentVisible(true);
-      }, 50);
-      return () => clearTimeout(timer);
+      fadeAnim.setValue(0);
+      slideAnim.setValue(0);
+      
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
-      setIsContentVisible(false);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [isVisible]);
+  }, [isVisible, fadeAnim, slideAnim]);
 
   const renderModalItem: ListRenderItem<ModalListItem> = useCallback(({ item }) => {
     if (item.type === 'book') {
@@ -90,6 +115,7 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     <Modal
       isVisible={isVisible}
       onSwipeComplete={onClose}
+      onBackdropPress={onClose}
       swipeDirection="down"
       style={styles.modal}
       propagateSwipe
@@ -101,73 +127,94 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       backdropTransitionInTiming={300}
       backdropTransitionOutTiming={300}
       avoidKeyboard={true}
+      useNativeDriverForBackdrop={true}
     >
-      {isContentVisible && (
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search books..."
-                placeholderTextColor="#aaa"
-                value={searchQuery}
-                onChangeText={onSearchChange}
-                multiline={false}
-                returnKeyType="search"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {searchQuery.length > 0 && (
-                <Pressable
-                  onPress={onClearSearch}
-                  style={styles.clearButton}
-                >
-                  <Text style={styles.clearButtonText}>✕</Text>
-                </Pressable>
-              )}
-            </View>
-
-            <Pressable
-              onPress={onClose}
-              style={styles.modalCloseButton}
-            >
-              <Text style={styles.modalClose}>Cancel</Text>
-            </Pressable>
-          </View>
-          
-          <View style={styles.listContainer}>
-            <FlatList
-              data={modalData}
-              keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
-              keyboardShouldPersistTaps="handled"
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
-              windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
-              initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
-              getItemLayout={getItemLayout}
-              renderItem={renderModalItem}
-              onScroll={() => Keyboard.dismiss()}
-              scrollEventThrottle={16}
-              ListFooterComponent={<View style={{ height: 100 }} />}
+      <Animated.View 
+        style={[
+          styles.modalContent,
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [50, 0],
+                }),
+              },
+              {
+                scale: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.95, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View style={styles.modalHeader}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search books..."
+              placeholderTextColor="#aaa"
+              value={searchQuery}
+              onChangeText={onSearchChange}
+              multiline={false}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+            {searchQuery.length > 0 && (
+              <Pressable
+                onPress={onClearSearch}
+                style={styles.clearButton}
+              >
+                <Text style={styles.clearButtonText}>✕</Text>
+              </Pressable>
+            )}
           </View>
+
+          <Pressable
+            onPress={onClose}
+            style={styles.modalCloseButton}
+          >
+            <Text style={styles.modalClose}>Cancel</Text>
+          </Pressable>
         </View>
-      )}
+        
+        <View style={styles.listContainer}>
+          <FlatList
+            data={modalData}
+            keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
+            windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
+            initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
+            getItemLayout={getItemLayout}
+            renderItem={renderModalItem}
+            onScroll={() => Keyboard.dismiss()}
+            scrollEventThrottle={16}
+            ListFooterComponent={<View style={{ height: 100 }} />}
+          />
+        </View>
+      </Animated.View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
   modal: {
-    justifyContent: "flex-start",
-    backgroundColor: COLORS.overlay,
+    justifyContent: "flex-end",
+    backgroundColor: 'transparent',
     margin: 0,
     marginTop: 50,
   },
   
   modalContent: {
     backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.xl,
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
     ...SHADOWS.lg,
     overflow: 'hidden',
     height: '100%',
