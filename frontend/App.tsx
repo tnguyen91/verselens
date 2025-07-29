@@ -90,22 +90,6 @@ const BookItem = memo<BookItemProps>(({ item, onPress }) => (
 ));
 BookItem.displayName = 'BookItem';
 
-interface ChapterItemProps {
-  item: number;
-  onPress: (item: number) => void;
-}
-
-const ChapterItem = memo<ChapterItemProps>(({ item, onPress }) => (
-  <TouchableHighlight
-    onPress={() => onPress(item)}
-    underlayColor="#222"
-    style={styles.chapterItem}
-  >
-    <Text style={styles.chapterItemText}>Ch. {item}</Text>
-  </TouchableHighlight>
-));
-ChapterItem.displayName = 'ChapterItem';
-
 interface VerseItemProps {
   verseNumber: string;
   verseText: string;
@@ -129,7 +113,6 @@ export default function App(): React.ReactElement | null {
   const [selectedBook, setSelectedBook] = useState<string>(Object.keys(bibleData)[0]);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
   const [bookModalVisible, setBookModalVisible] = useState<boolean>(false);
-  const [chapterModalVisible, setChapterModalVisible] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
   const [translateMode, setTranslateMode] = useState<boolean>(false);
@@ -140,10 +123,6 @@ export default function App(): React.ReactElement | null {
 
   const bookNames = useMemo(() => Object.keys(bibleData), []);
   const chapterCount = useMemo(() => Object.keys(bibleData[selectedBook]).length, [selectedBook]);
-  const chapterList = useMemo(() => 
-    Array.from({ length: chapterCount }, (_, i) => i + 1), 
-    [chapterCount]
-  );
   const verseData = useMemo(() => 
     Object.entries(bibleData[selectedBook][selectedChapter.toString()]),
     [selectedBook, selectedChapter]
@@ -178,13 +157,6 @@ export default function App(): React.ReactElement | null {
     
     return result;
   }, [debouncedSearchQuery, bookNames, expandedBook]);
-
-  const filteredBooks = useMemo(
-    () => bookNames.filter((book) =>
-      book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-    ),
-    [debouncedSearchQuery, bookNames]
-  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -234,12 +206,6 @@ export default function App(): React.ReactElement | null {
     setSelectedChapter(chapter);
     setBookModalVisible(false);
     setExpandedBook(null);
-    scrollToTop();
-  }, [scrollToTop]);
-
-  const handleChapterSelect = useCallback((chapter: number): void => {
-    setSelectedChapter(chapter);
-    setChapterModalVisible(false);
     scrollToTop();
   }, [scrollToTop]);
 
@@ -325,10 +291,6 @@ export default function App(): React.ReactElement | null {
     <BookItem item={item} onPress={handleBookSelect} />
   ), [handleBookSelect]);
 
-  const renderChapterItem: ListRenderItem<number> = useCallback(({ item }) => (
-    <ChapterItem item={item} onPress={handleChapterSelect} />
-  ), [handleChapterSelect]);
-
   const getVerseItemLayout = useCallback((data: any, index: number) => ({
     length: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT,
     offset: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT * index,
@@ -347,12 +309,6 @@ export default function App(): React.ReactElement | null {
     index,
   }), []);
 
-  const getChapterItemLayout = useCallback((data: any, index: number) => ({
-    length: FLATLIST_CONFIG.CHAPTER.ITEM_HEIGHT,
-    offset: FLATLIST_CONFIG.CHAPTER.ITEM_HEIGHT * index,
-    index,
-  }), []);
-
   if (!appIsReady) {
     return null;
   }
@@ -365,16 +321,9 @@ export default function App(): React.ReactElement | null {
           <TouchableHighlight
             onPress={() => setBookModalVisible(true)}
             underlayColor="#555"
-            style={styles.bookButton}
+            style={styles.singleBookButton}
           >
-            <Text style={styles.buttonText}>{selectedBook}</Text>
-          </TouchableHighlight>
-          <TouchableHighlight
-            onPress={() => setChapterModalVisible(true)}
-            underlayColor="#555"
-            style={styles.chapterButton}
-          >
-            <Text style={styles.buttonText}>{selectedChapter}</Text>
+            <Text style={styles.buttonText}>{selectedBook} {selectedChapter}</Text>
           </TouchableHighlight>
         </View>
 
@@ -443,37 +392,7 @@ export default function App(): React.ReactElement | null {
         </View>
       </Modal>
 
-      {/* Chapter Modal */}
-      <Modal
-        isVisible={chapterModalVisible}
-        onSwipeComplete={() => setChapterModalVisible(false)}
-        swipeDirection="down"
-        style={styles.chapterModal}
-        propagateSwipe
-      >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Chapters</Text>
-            <Pressable
-              onPress={() => setChapterModalVisible(false)}
-              style={styles.modalCloseButton}
-            >
-              <Text style={styles.modalClose}>Cancel</Text>
-            </Pressable>
-          </View>
-          <FlatList
-            data={chapterList}
-            keyExtractor={(item) => item.toString()}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={FLATLIST_CONFIG.CHAPTER.MAX_TO_RENDER_PER_BATCH}
-            windowSize={FLATLIST_CONFIG.CHAPTER.WINDOW_SIZE}
-            initialNumToRender={FLATLIST_CONFIG.CHAPTER.INITIAL_NUM_TO_RENDER}
-            getItemLayout={getChapterItemLayout}
-            renderItem={renderChapterItem}
-            ListFooterComponent={<View style={{ height: 100 }} />}
-          />
-        </View>
-      </Modal>
+      {/* Chapter Modal - Removed since chapters are now in book modal */}
 
       {/* Verse List */}
       <View style={styles.verseContainer}>
@@ -558,6 +477,12 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     marginRight: 1,
   },
+  singleBookButton: {
+    backgroundColor: "#696969",
+    paddingVertical: 7,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
   chapterButton: {
     backgroundColor: "#696969",
     paddingVertical: 7,
@@ -596,14 +521,6 @@ const styles = StyleSheet.create({
   chapterItemInBookText: {
     color: "#ccc",
     fontSize: 15,
-  },
-  chapterItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-  },
-  chapterItemText: {
-    color: "white",
-    fontSize: 20,
   },
   verseContainer: {
     flex: 1,
@@ -654,12 +571,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   bookModal: {
-    justifyContent: "flex-start",
-    backgroundColor: "black",
-    margin: 0,
-    marginTop: 50,
-  },
-  chapterModal: {
     justifyContent: "flex-start",
     backgroundColor: "black",
     margin: 0,
