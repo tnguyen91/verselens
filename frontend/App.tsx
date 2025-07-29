@@ -10,6 +10,7 @@ import {
   StyleSheet,
   StatusBar,
   ListRenderItem,
+  Keyboard,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Modal from "react-native-modal";
@@ -183,6 +184,7 @@ export default function App(): React.ReactElement | null {
   }, []);
 
   const handleBookToggleInModal = useCallback((book: string): void => {
+    Keyboard.dismiss();
     if (expandedBookInModal === book) {
       setExpandedBookInModal(null);
     } else {
@@ -191,6 +193,7 @@ export default function App(): React.ReactElement | null {
   }, [expandedBookInModal]);
 
   const handleChapterSelectFromModal = useCallback((book: string, chapter: number): void => {
+    Keyboard.dismiss();
     setSelectedBook(book);
     setSelectedChapter(chapter);
     setIsBookSelectionModalVisible(false);
@@ -376,6 +379,8 @@ export default function App(): React.ReactElement | null {
             initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
             getItemLayout={getBookChapterItemLayout}
             renderItem={renderBookChapterModalItem}
+            onScroll={() => Keyboard.dismiss()}
+            scrollEventThrottle={16}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
         </View>
