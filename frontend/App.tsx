@@ -18,7 +18,7 @@ import * as Font from "expo-font";
 
 import rawBibleData from "./assets/BibleTranslations/ESV/ESV_bible.json";
 
-interface BibleData {
+interface BibleDataStructure {
   [bookName: string]: {
     [chapterNumber: string]: {
       [verseNumber: string]: string;
@@ -26,60 +26,49 @@ interface BibleData {
   };
 }
 
-interface VerseData {
-  verseNumber: string;
-  verseText: string;
-}
-
-interface BookListItem {
+interface BookModalListItem {
   type: 'book';
   bookName: string;
 }
 
-interface ChapterListItem {
+interface ChapterModalListItem {
   type: 'chapter';
   bookName: string;
   chapterNumber: number;
 }
 
-const bibleData = rawBibleData as BibleData;
+const bibleData = rawBibleData as BibleDataStructure;
 
 SplashScreen.preventAutoHideAsync();
 
-const NAVIGATION_BUTTON_HEIGHT = 50;
+const NAVIGATION_BUTTON_SIZE = 50;
 const NAVIGATION_BOTTOM_PADDING = 25;
-const NAVIGATION_TOTAL_HEIGHT = NAVIGATION_BUTTON_HEIGHT + NAVIGATION_BOTTOM_PADDING;
+const NAVIGATION_TOTAL_HEIGHT = NAVIGATION_BUTTON_SIZE + NAVIGATION_BOTTOM_PADDING;
 
-const FLATLIST_CONFIG = {
-  VERSE: {
+const FLATLIST_PERFORMANCE_CONFIG = {
+  VERSES: {
     ITEM_HEIGHT: 54,
     MAX_TO_RENDER_PER_BATCH: 10,
     WINDOW_SIZE: 45,
     INITIAL_NUM_TO_RENDER: 12,
     UPDATE_CELLS_BATCHING_PERIOD: 200,
   },
-  BOOK: {
+  BOOKS_AND_CHAPTERS: {
     ITEM_HEIGHT: 60,
     MAX_TO_RENDER_PER_BATCH: 10,
     WINDOW_SIZE: 50,
     INITIAL_NUM_TO_RENDER: 10,
   },
-  CHAPTER: {
-    ITEM_HEIGHT: 60,
-    MAX_TO_RENDER_PER_BATCH: 10,
-    WINDOW_SIZE: 10,
-    INITIAL_NUM_TO_RENDER: 15,
-  },
 } as const;
 
-const DOUBLE_PRESS_DELAY = 300;
+const DOUBLE_TAP_THRESHOLD_MS = 300;
 
-interface BookItemProps {
+interface BookListItemProps {
   item: string;
-  onPress: (item: string) => void;
+  onPress: (bookName: string) => void;
 }
 
-const BookItem = memo<BookItemProps>(({ item, onPress }) => (
+const BookListItem = memo<BookListItemProps>(({ item, onPress }) => (
   <TouchableHighlight
     onPress={() => onPress(item)}
     underlayColor="#222"
@@ -88,14 +77,14 @@ const BookItem = memo<BookItemProps>(({ item, onPress }) => (
     <Text style={styles.bookItemText}>{item}</Text>
   </TouchableHighlight>
 ));
-BookItem.displayName = 'BookItem';
+BookListItem.displayName = 'BookListItem';
 
-interface VerseItemProps {
+interface VerseDisplayItemProps {
   verseNumber: string;
   verseText: string;
 }
 
-const VerseItem = memo<VerseItemProps>(({ verseNumber, verseText }) => (
+const VerseDisplayItem = memo<VerseDisplayItemProps>(({ verseNumber, verseText }) => (
   <View style={styles.verseItemContainer}>
     <Text style={styles.verse}>
       <Text style={styles.verseLabel}>{verseNumber}. </Text>
@@ -106,25 +95,25 @@ const VerseItem = memo<VerseItemProps>(({ verseNumber, verseText }) => (
   return prevProps.verseNumber === nextProps.verseNumber && 
          prevProps.verseText === nextProps.verseText;
 });
-VerseItem.displayName = 'VerseItem';
+VerseDisplayItem.displayName = 'VerseDisplayItem';
 
 export default function App(): React.ReactElement | null {
-  const [appIsReady, setAppIsReady] = useState<boolean>(false);
+  const [isAppReady, setIsAppReady] = useState<boolean>(false);
   const [selectedBook, setSelectedBook] = useState<string>(Object.keys(bibleData)[0]);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
-  const [bookModalVisible, setBookModalVisible] = useState<boolean>(false);
+  const [isBookSelectionModalVisible, setIsBookSelectionModalVisible] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
-  const [translateMode, setTranslateMode] = useState<boolean>(false);
-  const [lastTap, setLastTap] = useState<number | null>(null);
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
+  const [isTranslateModeEnabled, setIsTranslateModeEnabled] = useState<boolean>(false);
+  const [lastTapTimestamp, setLastTapTimestamp] = useState<number | null>(null);
+  const [expandedBookInModal, setExpandedBookInModal] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
 
   const bookNames = useMemo(() => Object.keys(bibleData), []);
   const chapterCount = useMemo(() => Object.keys(bibleData[selectedBook]).length, [selectedBook]);
-  const verseData = useMemo(() => 
-    Object.entries(bibleData[selectedBook][selectedChapter.toString()]),
+  const currentVerseEntries = useMemo(() => 
+    Object.entries(bibleData[selectedBook][selectedChapter.toString()]) as [string, string][],
     [selectedBook, selectedChapter]
   );
   const currentBookIndex = useMemo(() => bookNames.indexOf(selectedBook), [bookNames, selectedBook]);
@@ -137,17 +126,17 @@ export default function App(): React.ReactElement | null {
     [currentBookIndex, bookNames.length, selectedChapter, chapterCount]
   );
   
-  const bookChapterData = useMemo(() => {
+  const bookChapterModalData = useMemo(() => {
     const filteredBookNames = bookNames.filter((book) =>
       book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     );
     
-    const result: (BookListItem | ChapterListItem)[] = [];
+    const result: (BookModalListItem | ChapterModalListItem)[] = [];
     
     filteredBookNames.forEach(bookName => {
       result.push({ type: 'book', bookName });
       
-      if (expandedBook === bookName) {
+      if (expandedBookInModal === bookName) {
         const chapters = Object.keys(bibleData[bookName]).length;
         for (let i = 1; i <= chapters; i++) {
           result.push({ type: 'chapter', bookName, chapterNumber: i });
@@ -156,7 +145,7 @@ export default function App(): React.ReactElement | null {
     });
     
     return result;
-  }, [debouncedSearchQuery, bookNames, expandedBook]);
+  }, [debouncedSearchQuery, bookNames, expandedBookInModal]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -167,7 +156,7 @@ export default function App(): React.ReactElement | null {
   }, [searchQuery]);
 
   useEffect(() => {
-    const initializeApp = async (): Promise<void> => {
+    const initializeApplication = async (): Promise<void> => {
       try {
         await Font.loadAsync({
           "times-new-roman": require("./assets/fonts/times.ttf"),
@@ -175,41 +164,41 @@ export default function App(): React.ReactElement | null {
       } catch (error) {
         console.warn('Font loading error:', error);
       } finally {
-        setAppIsReady(true);
+        setIsAppReady(true);
         await SplashScreen.hideAsync();
       }
     };
 
-    initializeApp();
+    initializeApplication();
   }, []);
 
   const onLayoutRootView = useCallback(async (): Promise<void> => {
-    if (appIsReady) {
+    if (isAppReady) {
       await SplashScreen.hideAsync();
     }
-  }, [appIsReady]);
+  }, [isAppReady]);
 
   const scrollToTop = useCallback((): void => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
 
-  const handleBookSelect = useCallback((book: string): void => {
-    if (expandedBook === book) {
-      setExpandedBook(null);
+  const handleBookToggleInModal = useCallback((book: string): void => {
+    if (expandedBookInModal === book) {
+      setExpandedBookInModal(null);
     } else {
-      setExpandedBook(book);
+      setExpandedBookInModal(book);
     }
-  }, [expandedBook]);
+  }, [expandedBookInModal]);
 
-  const handleChapterSelectFromBook = useCallback((book: string, chapter: number): void => {
+  const handleChapterSelectFromModal = useCallback((book: string, chapter: number): void => {
     setSelectedBook(book);
     setSelectedChapter(chapter);
-    setBookModalVisible(false);
-    setExpandedBook(null);
+    setIsBookSelectionModalVisible(false);
+    setExpandedBookInModal(null);
     scrollToTop();
   }, [scrollToTop]);
 
-  const goToNext = useCallback((): void => {
+  const navigateToNextChapter = useCallback((): void => {
     if (selectedChapter < chapterCount) {
       setSelectedChapter((prev) => {
         scrollToTop();
@@ -222,7 +211,7 @@ export default function App(): React.ReactElement | null {
     }
   }, [selectedChapter, chapterCount, currentBookIndex, bookNames, scrollToTop]);
 
-  const goToPrevious = useCallback((): void => {
+  const navigateToPreviousChapter = useCallback((): void => {
     if (selectedChapter > 1) {
       setSelectedChapter((prev) => {
         scrollToTop();
@@ -237,39 +226,39 @@ export default function App(): React.ReactElement | null {
     }
   }, [selectedChapter, currentBookIndex, bookNames, scrollToTop]);
 
-  const clearSearch = useCallback((): void => {
-    setSearchQuery("");
+  const toggleTranslateMode = useCallback((): void => {
+    setIsTranslateModeEnabled((prev: boolean) => !prev);
   }, []);
 
-  const toggleTranslateMode = useCallback((): void => {
-    setTranslateMode(prev => !prev);
+  const clearSearchQuery = useCallback((): void => {
+    setSearchQuery("");
   }, []);
 
   const handleTopBarDoubleTap = useCallback((): void => {
     const now = Date.now();
     
-    if (lastTap && (now - lastTap) < DOUBLE_PRESS_DELAY) {
+    if (lastTapTimestamp && (now - lastTapTimestamp) < DOUBLE_TAP_THRESHOLD_MS) {
       scrollToTop();
     }
-    setLastTap(now);
-  }, [lastTap, scrollToTop]);
+    setLastTapTimestamp(now);
+  }, [lastTapTimestamp, scrollToTop]);
 
   const renderVerseItem: ListRenderItem<[string, string]> = useCallback(({ item: [verseNumber, verseText] }) => (
-    <VerseItem verseNumber={verseNumber} verseText={verseText} />
+    <VerseDisplayItem verseNumber={verseNumber} verseText={verseText} />
   ), []);
 
-  const renderBookChapterItem: ListRenderItem<BookListItem | ChapterListItem> = useCallback(({ item }) => {
+  const renderBookChapterModalItem: ListRenderItem<BookModalListItem | ChapterModalListItem> = useCallback(({ item }) => {
     if (item.type === 'book') {
       return (
         <TouchableHighlight
-          onPress={() => handleBookSelect(item.bookName)}
+          onPress={() => handleBookToggleInModal(item.bookName)}
           underlayColor="#222"
-          style={[styles.bookItem, expandedBook === item.bookName && styles.expandedBookItem]}
+          style={[styles.bookItem, expandedBookInModal === item.bookName && styles.expandedBookItem]}
         >
           <View style={styles.bookItemContent}>
             <Text style={styles.bookItemText}>{item.bookName}</Text>
             <Text style={styles.expandIcon}>
-              {expandedBook === item.bookName ? '▼' : '▶'}
+              {expandedBookInModal === item.bookName ? '▼' : '▶'}
             </Text>
           </View>
         </TouchableHighlight>
@@ -277,7 +266,7 @@ export default function App(): React.ReactElement | null {
     } else {
       return (
         <TouchableHighlight
-          onPress={() => handleChapterSelectFromBook(item.bookName, item.chapterNumber)}
+          onPress={() => handleChapterSelectFromModal(item.bookName, item.chapterNumber)}
           underlayColor="#333"
           style={styles.chapterItemInBook}
         >
@@ -285,31 +274,31 @@ export default function App(): React.ReactElement | null {
         </TouchableHighlight>
       );
     }
-  }, [handleBookSelect, handleChapterSelectFromBook, expandedBook]);
+  }, [handleBookToggleInModal, handleChapterSelectFromModal, expandedBookInModal]);
 
   const renderBookItem: ListRenderItem<string> = useCallback(({ item }) => (
-    <BookItem item={item} onPress={handleBookSelect} />
-  ), [handleBookSelect]);
+    <BookListItem item={item} onPress={handleBookToggleInModal} />
+  ), [handleBookToggleInModal]);
 
   const getVerseItemLayout = useCallback((data: any, index: number) => ({
-    length: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT,
-    offset: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT * index,
+    length: FLATLIST_PERFORMANCE_CONFIG.VERSES.ITEM_HEIGHT,
+    offset: FLATLIST_PERFORMANCE_CONFIG.VERSES.ITEM_HEIGHT * index,
     index,
   }), []);
 
   const getBookChapterItemLayout = useCallback((data: any, index: number) => ({
-    length: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT,
-    offset: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT * index,
+    length: FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.ITEM_HEIGHT,
+    offset: FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.ITEM_HEIGHT * index,
     index,
   }), []);
 
   const getBookItemLayout = useCallback((data: any, index: number) => ({
-    length: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT,
-    offset: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT * index,
+    length: FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.ITEM_HEIGHT,
+    offset: FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.ITEM_HEIGHT * index,
     index,
   }), []);
 
-  if (!appIsReady) {
+  if (!isAppReady) {
     return null;
   }
 
@@ -319,7 +308,7 @@ export default function App(): React.ReactElement | null {
         <Pressable onPress={handleTopBarDoubleTap} style={styles.topBar}>
         <View style={styles.bookChapterContainer}>
           <TouchableHighlight
-            onPress={() => setBookModalVisible(true)}
+            onPress={() => setIsBookSelectionModalVisible(true)}
             underlayColor="#555"
             style={styles.singleBookButton}
           >
@@ -333,17 +322,17 @@ export default function App(): React.ReactElement | null {
         >
           <Icon 
             style={styles.translateIcon}
-            name={translateMode ? "translate" : "translate-off"}
+            name={isTranslateModeEnabled ? "translate" : "translate-off"}
           />
         </Pressable>
       </Pressable>
 
-      {/* Book Modal */}
+      {/* Book Selection Modal */}
       <Modal
-        isVisible={bookModalVisible}
-        onSwipeComplete={() => setBookModalVisible(false)}
+        isVisible={isBookSelectionModalVisible}
+        onSwipeComplete={() => setIsBookSelectionModalVisible(false)}
         swipeDirection="down"
-        style={styles.bookModal}
+        style={styles.bookSelectionModal}
         propagateSwipe
       >
         <View style={styles.modalContent}>
@@ -362,7 +351,7 @@ export default function App(): React.ReactElement | null {
               />
               {searchQuery.length > 0 && (
                 <Pressable
-                  onPress={clearSearch}
+                  onPress={clearSearchQuery}
                   style={styles.clearButton}
                 >
                   <Text style={styles.clearButtonText}>✕</Text>
@@ -371,69 +360,67 @@ export default function App(): React.ReactElement | null {
             </View>
 
             <Pressable
-              onPress={() => setBookModalVisible(false)}
+              onPress={() => setIsBookSelectionModalVisible(false)}
               style={styles.modalCloseButton}
             >
               <Text style={styles.modalClose}>Cancel</Text>
             </Pressable>
           </View>
           <FlatList
-            data={bookChapterData}
+            data={bookChapterModalData}
             keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={true}
-            maxToRenderPerBatch={FLATLIST_CONFIG.BOOK.MAX_TO_RENDER_PER_BATCH}
-            windowSize={FLATLIST_CONFIG.BOOK.WINDOW_SIZE}
-            initialNumToRender={FLATLIST_CONFIG.BOOK.INITIAL_NUM_TO_RENDER}
+            maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
+            windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
+            initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
             getItemLayout={getBookChapterItemLayout}
-            renderItem={renderBookChapterItem}
+            renderItem={renderBookChapterModalItem}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
         </View>
       </Modal>
-
-      {/* Chapter Modal - Removed since chapters are now in book modal */}
 
       {/* Verse List */}
       <View style={styles.verseContainer}>
         <FlatList
           ref={flatListRef}
           ListHeaderComponent={<View style={{ height: 10 }} />}
-          data={verseData}
+          data={currentVerseEntries}
           keyExtractor={([verseNumber]) => `${selectedBook}-${selectedChapter}-${verseNumber}`}
           removeClippedSubviews={true}
-          maxToRenderPerBatch={FLATLIST_CONFIG.VERSE.MAX_TO_RENDER_PER_BATCH}
-          windowSize={FLATLIST_CONFIG.VERSE.WINDOW_SIZE}
-          initialNumToRender={FLATLIST_CONFIG.VERSE.INITIAL_NUM_TO_RENDER}
-          updateCellsBatchingPeriod={FLATLIST_CONFIG.VERSE.UPDATE_CELLS_BATCHING_PERIOD}
+          maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.VERSES.MAX_TO_RENDER_PER_BATCH}
+          windowSize={FLATLIST_PERFORMANCE_CONFIG.VERSES.WINDOW_SIZE}
+          initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.VERSES.INITIAL_NUM_TO_RENDER}
+          updateCellsBatchingPeriod={FLATLIST_PERFORMANCE_CONFIG.VERSES.UPDATE_CELLS_BATCHING_PERIOD}
           getItemLayout={getVerseItemLayout}
           renderItem={renderVerseItem}
           ListFooterComponent={<View style={{ height: NAVIGATION_TOTAL_HEIGHT }} />}
         />
       </View>
 
-      {/* Navigation */}
-      <View style={styles.navButtonsContainer}>
+      {/* Navigation Buttons */}
+      <View style={styles.navigationButtonsContainer}>
         {isFirstChapter ? (
-          <View style={styles.navButtonPlaceholder} />
+          <View style={styles.navigationButtonPlaceholder} />
         ) : (
           <TouchableHighlight
-            onPress={goToPrevious}
-            style={styles.navButton}
+            onPress={navigateToPreviousChapter}
+            style={styles.navigationButton}
             underlayColor="#555"
           >
-            <Text style={styles.navButtonText}>←</Text>
+            <Text style={styles.navigationButtonText}>←</Text>
           </TouchableHighlight>
         )}
         {isLastChapter ? (
-          <View style={styles.navButtonPlaceholder} />
+          <View style={styles.navigationButtonPlaceholder} />
         ) : (
           <TouchableHighlight
-            onPress={goToNext}
-            style={styles.navButton}
+            onPress={navigateToNextChapter}
+            style={styles.navigationButton}
             underlayColor="#555"
           >
-            <Text style={styles.navButtonText}>→</Text>
+            <Text style={styles.navigationButtonText}>→</Text>
           </TouchableHighlight>
         )}
       </View>
@@ -543,7 +530,7 @@ const styles = StyleSheet.create({
     color: "#ccc",
     fontSize: 13,
   },
-  navButtonsContainer: {
+  navigationButtonsContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -553,24 +540,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: NAVIGATION_BOTTOM_PADDING,
   },
-  navButtonPlaceholder: {
-    width: NAVIGATION_BUTTON_HEIGHT,
-    height: NAVIGATION_BUTTON_HEIGHT,
+  navigationButtonPlaceholder: {
+    width: NAVIGATION_BUTTON_SIZE,
+    height: NAVIGATION_BUTTON_SIZE,
   },
-  navButton: {
-    width: NAVIGATION_BUTTON_HEIGHT,
-    height: NAVIGATION_BUTTON_HEIGHT,
+  navigationButton: {
+    width: NAVIGATION_BUTTON_SIZE,
+    height: NAVIGATION_BUTTON_SIZE,
     backgroundColor: "#696969",
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
   },
-  navButtonText: {
+  navigationButtonText: {
     color: "white",
     fontSize: 25,
     fontWeight: "bold",
   },
-  bookModal: {
+  bookSelectionModal: {
     justifyContent: "flex-start",
     backgroundColor: "black",
     margin: 0,
@@ -632,7 +619,6 @@ const styles = StyleSheet.create({
     color: "#aaa",
     fontSize: 18,
   },
-
   modeToggleButton: {
     borderRadius: 20,
     alignItems: "center",
