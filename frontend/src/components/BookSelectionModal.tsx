@@ -113,20 +113,22 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
           </Pressable>
         </View>
         
-        <FlatList
-          data={modalData}
-          keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
-          keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
-          windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
-          initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
-          getItemLayout={getItemLayout}
-          renderItem={renderModalItem}
-          onScroll={() => Keyboard.dismiss()}
-          scrollEventThrottle={16}
-          ListFooterComponent={<View style={{ height: 100 }} />}
-        />
+        <View style={styles.listContainer}>
+          <FlatList
+            data={modalData}
+            keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
+            windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
+            initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
+            getItemLayout={getItemLayout}
+            renderItem={renderModalItem}
+            onScroll={() => Keyboard.dismiss()}
+            scrollEventThrottle={16}
+            ListFooterComponent={<View style={{ height: 100 }} />}
+          />
+        </View>
       </View>
     </Modal>
   );
@@ -145,6 +147,7 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.xl,
     ...SHADOWS.lg,
     overflow: 'hidden',
+    height: '100%', // Fixed height for consistent modal size
   },
   
   modalHeader: {
@@ -155,6 +158,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  
+  listContainer: {
+    flex: 1, // Takes up remaining space in the modal
   },
   
   searchContainer: {
