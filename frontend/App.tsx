@@ -31,6 +31,17 @@ interface VerseData {
   verseText: string;
 }
 
+interface BookListItem {
+  type: 'book';
+  bookName: string;
+}
+
+interface ChapterListItem {
+  type: 'chapter';
+  bookName: string;
+  chapterNumber: number;
+}
+
 const bibleData = rawBibleData as BibleData;
 
 SplashScreen.preventAutoHideAsync();
@@ -50,7 +61,7 @@ const FLATLIST_CONFIG = {
   BOOK: {
     ITEM_HEIGHT: 60,
     MAX_TO_RENDER_PER_BATCH: 10,
-    WINDOW_SIZE: 10,
+    WINDOW_SIZE: 50,
     INITIAL_NUM_TO_RENDER: 10,
   },
   CHAPTER: {
@@ -123,6 +134,7 @@ export default function App(): React.ReactElement | null {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
   const [translateMode, setTranslateMode] = useState<boolean>(false);
   const [lastTap, setLastTap] = useState<number | null>(null);
+  const [expandedBook, setExpandedBook] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -145,6 +157,28 @@ export default function App(): React.ReactElement | null {
     currentBookIndex === bookNames.length - 1 && selectedChapter === chapterCount, 
     [currentBookIndex, bookNames.length, selectedChapter, chapterCount]
   );
+  
+  const bookChapterData = useMemo(() => {
+    const filteredBookNames = bookNames.filter((book) =>
+      book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    );
+    
+    const result: (BookListItem | ChapterListItem)[] = [];
+    
+    filteredBookNames.forEach(bookName => {
+      result.push({ type: 'book', bookName });
+      
+      if (expandedBook === bookName) {
+        const chapters = Object.keys(bibleData[bookName]).length;
+        for (let i = 1; i <= chapters; i++) {
+          result.push({ type: 'chapter', bookName, chapterNumber: i });
+        }
+      }
+    });
+    
+    return result;
+  }, [debouncedSearchQuery, bookNames, expandedBook]);
+
   const filteredBooks = useMemo(
     () => bookNames.filter((book) =>
       book.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
@@ -188,9 +222,18 @@ export default function App(): React.ReactElement | null {
   }, []);
 
   const handleBookSelect = useCallback((book: string): void => {
+    if (expandedBook === book) {
+      setExpandedBook(null);
+    } else {
+      setExpandedBook(book);
+    }
+  }, [expandedBook]);
+
+  const handleChapterSelectFromBook = useCallback((book: string, chapter: number): void => {
     setSelectedBook(book);
-    setSelectedChapter(1);
+    setSelectedChapter(chapter);
     setBookModalVisible(false);
+    setExpandedBook(null);
     scrollToTop();
   }, [scrollToTop]);
 
@@ -249,6 +292,35 @@ export default function App(): React.ReactElement | null {
     <VerseItem verseNumber={verseNumber} verseText={verseText} />
   ), []);
 
+  const renderBookChapterItem: ListRenderItem<BookListItem | ChapterListItem> = useCallback(({ item }) => {
+    if (item.type === 'book') {
+      return (
+        <TouchableHighlight
+          onPress={() => handleBookSelect(item.bookName)}
+          underlayColor="#222"
+          style={[styles.bookItem, expandedBook === item.bookName && styles.expandedBookItem]}
+        >
+          <View style={styles.bookItemContent}>
+            <Text style={styles.bookItemText}>{item.bookName}</Text>
+            <Text style={styles.expandIcon}>
+              {expandedBook === item.bookName ? '▼' : '▶'}
+            </Text>
+          </View>
+        </TouchableHighlight>
+      );
+    } else {
+      return (
+        <TouchableHighlight
+          onPress={() => handleChapterSelectFromBook(item.bookName, item.chapterNumber)}
+          underlayColor="#333"
+          style={styles.chapterItemInBook}
+        >
+          <Text style={styles.chapterItemInBookText}>Chapter {item.chapterNumber}</Text>
+        </TouchableHighlight>
+      );
+    }
+  }, [handleBookSelect, handleChapterSelectFromBook, expandedBook]);
+
   const renderBookItem: ListRenderItem<string> = useCallback(({ item }) => (
     <BookItem item={item} onPress={handleBookSelect} />
   ), [handleBookSelect]);
@@ -260,6 +332,12 @@ export default function App(): React.ReactElement | null {
   const getVerseItemLayout = useCallback((data: any, index: number) => ({
     length: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT,
     offset: FLATLIST_CONFIG.VERSE.ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  const getBookChapterItemLayout = useCallback((data: any, index: number) => ({
+    length: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT,
+    offset: FLATLIST_CONFIG.BOOK.ITEM_HEIGHT * index,
     index,
   }), []);
 
@@ -351,15 +429,15 @@ export default function App(): React.ReactElement | null {
             </Pressable>
           </View>
           <FlatList
-            data={filteredBooks}
-            keyExtractor={(item) => item}
+            data={bookChapterData}
+            keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={true}
             maxToRenderPerBatch={FLATLIST_CONFIG.BOOK.MAX_TO_RENDER_PER_BATCH}
             windowSize={FLATLIST_CONFIG.BOOK.WINDOW_SIZE}
             initialNumToRender={FLATLIST_CONFIG.BOOK.INITIAL_NUM_TO_RENDER}
-            getItemLayout={getBookItemLayout}
-            renderItem={renderBookItem}
+            getItemLayout={getBookChapterItemLayout}
+            renderItem={renderBookChapterItem}
             ListFooterComponent={<View style={{ height: 100 }} />}
           />
         </View>
@@ -495,6 +573,29 @@ const styles = StyleSheet.create({
   bookItemText: {
     color: "white",
     fontSize: 17,
+  },
+  expandedBookItem: {
+    backgroundColor: "#333",
+  },
+  bookItemContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  expandIcon: {
+    color: "#aaa",
+    fontSize: 12,
+  },
+  chapterItemInBook: {
+    paddingVertical: 12,
+    paddingHorizontal: 35,
+    backgroundColor: "#1a1a1a",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+  },
+  chapterItemInBookText: {
+    color: "#ccc",
+    fontSize: 15,
   },
   chapterItem: {
     paddingVertical: 16,
