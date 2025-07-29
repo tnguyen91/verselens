@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,19 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   onBookToggle,
   onChapterSelect,
 }) => {
+  const [isContentVisible, setIsContentVisible] = useState(false);
+
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        setIsContentVisible(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setIsContentVisible(false);
+    }
+  }, [isVisible]);
+
   const renderModalItem: ListRenderItem<ModalListItem> = useCallback(({ item }) => {
     if (item.type === 'book') {
       return (
@@ -80,56 +93,66 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       swipeDirection="down"
       style={styles.modal}
       propagateSwipe
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      animationInTiming={300}
+      animationOutTiming={300}
+      backdropOpacity={0.5}
+      backdropTransitionInTiming={300}
+      backdropTransitionOutTiming={300}
+      avoidKeyboard={true}
     >
-      <View style={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search books..."
-              placeholderTextColor="#aaa"
-              value={searchQuery}
-              onChangeText={onSearchChange}
-              multiline={false}
-              returnKeyType="search"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable
-                onPress={onClearSearch}
-                style={styles.clearButton}
-              >
-                <Text style={styles.clearButtonText}>✕</Text>
-              </Pressable>
-            )}
-          </View>
+      {isContentVisible && (
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search books..."
+                placeholderTextColor="#aaa"
+                value={searchQuery}
+                onChangeText={onSearchChange}
+                multiline={false}
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable
+                  onPress={onClearSearch}
+                  style={styles.clearButton}
+                >
+                  <Text style={styles.clearButtonText}>✕</Text>
+                </Pressable>
+              )}
+            </View>
 
-          <Pressable
-            onPress={onClose}
-            style={styles.modalCloseButton}
-          >
-            <Text style={styles.modalClose}>Cancel</Text>
-          </Pressable>
+            <Pressable
+              onPress={onClose}
+              style={styles.modalCloseButton}
+            >
+              <Text style={styles.modalClose}>Cancel</Text>
+            </Pressable>
+          </View>
+          
+          <View style={styles.listContainer}>
+            <FlatList
+              data={modalData}
+              keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
+              keyboardShouldPersistTaps="handled"
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
+              windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
+              initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
+              getItemLayout={getItemLayout}
+              renderItem={renderModalItem}
+              onScroll={() => Keyboard.dismiss()}
+              scrollEventThrottle={16}
+              ListFooterComponent={<View style={{ height: 100 }} />}
+            />
+          </View>
         </View>
-        
-        <View style={styles.listContainer}>
-          <FlatList
-            data={modalData}
-            keyExtractor={(item) => item.type === 'book' ? item.bookName : `${item.bookName}-${item.chapterNumber}`}
-            keyboardShouldPersistTaps="handled"
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.MAX_TO_RENDER_PER_BATCH}
-            windowSize={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.WINDOW_SIZE}
-            initialNumToRender={FLATLIST_PERFORMANCE_CONFIG.BOOKS_AND_CHAPTERS.INITIAL_NUM_TO_RENDER}
-            getItemLayout={getItemLayout}
-            renderItem={renderModalItem}
-            onScroll={() => Keyboard.dismiss()}
-            scrollEventThrottle={16}
-            ListFooterComponent={<View style={{ height: 100 }} />}
-          />
-        </View>
-      </View>
+      )}
     </Modal>
   );
 };
