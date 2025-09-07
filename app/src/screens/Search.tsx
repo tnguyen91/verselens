@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,53 +33,24 @@ export const Search = React.memo<SearchProps>(({ onVerseSelect }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'ot' | 'nt'>('all');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const performSearch = useCallback(async (query: string) => {
     if (!query || query.length < 3) {
       setSearchResults([]);
-      setIsSearching(false);
       return;
     }
+
+    setIsSearching(true);
     
-    try {
+    setTimeout(() => {
       const results = BibleDataService.searchBible(currentTranslation.data, query, selectedFilter);
       setSearchResults(results);
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchResults([]);
-    } finally {
       setIsSearching(false);
-    }
+    }, 100);
   }, [currentTranslation.data, selectedFilter]);
 
   useEffect(() => {
-    // Clear any existing timer
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    // If query is empty or too short, clear results immediately
-    if (!searchQuery.trim() || searchQuery.trim().length < 3) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    // Set searching state immediately
-    setIsSearching(true);
-
-    // Debounce the search
-    timerRef.current = setTimeout(() => {
-      performSearch(searchQuery.trim());
-    }, 300);
-
-    // Cleanup function
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
+    performSearch(searchQuery.trim());
   }, [searchQuery, performSearch]);
 
   const renderSearchResult = useCallback(({ item }: { item: SearchResult }) => {

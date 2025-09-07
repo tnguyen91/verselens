@@ -3,11 +3,6 @@ import { BibleDataStructure, BibleTranslation, DictionaryEntry, CurrentReference
 const BIBLE_API_BASE = 'https://raw.githubusercontent.com/jadenzaleski/BibleTranslations/master';
 const DICTIONARY_API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en';
 
-// Helper function to escape special regex characters
-const escapeRegExp = (string: string): string => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-};
-
 const remoteTranslationCache = new Map<string, BibleTranslation>();
 let availableTranslationsCache: TranslationInfo[] | null = null;
 
@@ -207,7 +202,7 @@ export class BibleDataService {
           
           if (text.toLowerCase().includes(queryLower)) {
             const highlightedText = text.replace(
-              new RegExp(escapeRegExp(query), 'gi'),
+              new RegExp(query, 'gi'),
               `**$&**`
             );
             
