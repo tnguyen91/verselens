@@ -27,7 +27,7 @@
     "@react-native-picker/picker": "2.11.1",
     "@react-navigation/bottom-tabs": "^7.4.2",
     "@react-navigation/native": "^7.1.14",
-    "expo-app-loading": "^2.1.1",
+    "expo-app-loading": "^1.0.3",
     "expo-audio": "^0.4.8",
     "expo-av": "~15.1.7",
     "expo-dev-client": "~5.2.4",

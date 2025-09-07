@@ -33,7 +33,6 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentSound, setCurrentSound] = useState<Audio.Sound | null>(null);
 
-  // Initialize audio mode
   useEffect(() => {
     const configureAudio = async () => {
       try {
@@ -68,12 +67,10 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     try {
       setIsPlayingAudio(true);
       
-      // Clean up any existing sound
       if (currentSound) {
         await currentSound.unloadAsync();
       }
       
-      // Create and configure the sound
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { shouldPlay: true }
@@ -81,7 +78,6 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
       
       setCurrentSound(sound);
       
-      // Set up playback status update
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlayingAudio(false);
@@ -96,7 +92,6 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     }
   }, [currentSound]);
 
-  // Clean up sound when component unmounts or modal closes
   useEffect(() => {
     if (!isVisible && currentSound) {
       currentSound.unloadAsync();

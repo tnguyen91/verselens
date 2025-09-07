@@ -41,19 +41,17 @@ export const BibleVerse = memo<BibleVerseProps>(({
     }
   }, [translationMode]);
 
-  // Memoize word splitting to avoid re-computation on every render
   const words = useMemo(() => {
     return translationMode ? verseText.split(' ') : [];
   }, [verseText, translationMode]);
 
   const renderTextWithWords = useCallback((text: string) => {
     if (translationMode) {
-      // Use pre-computed words array and optimize rendering
       return (
         <Text style={[styles.normalText, { color: theme.colors.textPrimary, fontSize: fontSize }]}>
           {words.map((word, index) => (
             <Text 
-              key={index} // Simplified key since words array is stable
+              key={index} 
               style={[styles.tappableWord, { color: theme.colors.textPrimary, fontSize: fontSize }]}
               onPress={() => handleWordPress(word)}
             >
@@ -63,7 +61,6 @@ export const BibleVerse = memo<BibleVerseProps>(({
         </Text>
       );
     } else {
-      // In bookmark mode, show normal text
       return (
         <Text style={[styles.normalText, { color: theme.colors.textPrimary, fontSize: fontSize }]}>
           {text}

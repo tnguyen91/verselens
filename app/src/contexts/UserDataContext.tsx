@@ -6,7 +6,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { Bookmark } from '../types/bible';
 
-// Storage keys
 const STORAGE_KEYS = {
   BOOKMARKS: '@verselens_bookmarks',
   FONT_SIZE: '@verselens_font_size',
@@ -28,7 +27,6 @@ interface UserDataContextType {
   // Loading state
   isLoaded: boolean;
   
-  // Data management utilities
   exportData: () => Promise<string>;
   exportToFile: () => Promise<void>;
   importData: (data: string) => Promise<void>;
@@ -159,14 +157,11 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
       const fileName = `verselens-backup-${new Date().toISOString().split('T')[0]}.json`;
       const fileUri = FileSystem.documentDirectory + fileName;
       
-      // Write file to device storage
       await FileSystem.writeAsStringAsync(fileUri, dataString);
       
-      // Share the file
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri);
       } else {
-        // Fallback to regular share if Sharing is not available
         await Share.share({
           message: dataString,
           title: 'VerseLens Backup',
@@ -189,7 +184,6 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
         const fileUri = result.assets[0].uri;
         const fileContent = await FileSystem.readAsStringAsync(fileUri);
         
-        // Parse and validate the imported data
         const importedData = JSON.parse(fileContent);
         
         if (importedData.bookmarks) {
@@ -201,7 +195,6 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
           await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(bookmarksWithDates));
         }
         
-        // Handle different export formats (new format with settings object vs old format)
         const fontSize = importedData.settings?.fontSize || importedData.fontSize;
         const keepScreenOn = importedData.settings?.keepScreenOn || importedData.keepScreenOn;
         

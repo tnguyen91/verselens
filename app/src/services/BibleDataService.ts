@@ -113,7 +113,6 @@ export class BibleDataService {
     }
   }
 
-  // Bible navigation utilities
   static getNextChapter(book: string, chapter: number, bibleData?: BibleTranslation): { book: string; chapter: number } | null {
     if (!bibleData) return null;
     
@@ -142,12 +141,10 @@ export class BibleDataService {
     const currentBookIndex = books.indexOf(book);
     if (currentBookIndex === -1) return null;
 
-    // Check if we can go to previous chapter in current book
     if (chapter > 1) {
       return { book, chapter: chapter - 1 };
     }
 
-    // Check if we can go to previous book
     if (currentBookIndex > 0) {
       const previousBook = books[currentBookIndex - 1];
       const previousBookChapters = Object.keys(bibleData[previousBook] || {}).map(ch => parseInt(ch)).sort((a, b) => a - b);

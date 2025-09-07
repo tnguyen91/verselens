@@ -78,24 +78,21 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(
     }
   }, [isVisible]);
 
-  // Auto-expand current book when modal opens
   useEffect(() => {
     if (isVisible && currentBook) {
       setExpandedBook(currentBook);
     }
   }, [isVisible, currentBook, setExpandedBook]);
 
-  // Auto-scroll to current book when modal opens
   useEffect(() => {
     if (isVisible && currentBook && isContentVisible) {
       const currentBookIndex = booksOnlyData.findIndex((item: Extract<ModalListItem, { type: 'book' }>) => item.bookName === currentBook);
       if (currentBookIndex >= 0 && flatListRef.current) {
-        // Small delay to ensure the list is rendered
         const timer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({
             index: currentBookIndex,
             animated: true,
-            viewPosition: 0.1, // Position the current book near the top
+            viewPosition: 0.1,
           });
         }, 100);
         return () => clearTimeout(timer);
@@ -103,7 +100,6 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(
     }
   }, [isVisible, currentBook, isContentVisible, booksOnlyData]);
 
-  // Auto-collapse expanded book when modal closes
   useEffect(() => {
     if (!isVisible) {
       const timer = setTimeout(() => {
@@ -113,7 +109,6 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(
     }
   }, [isVisible, setExpandedBook]);
 
-  // Animate chapter expansion/collapse
   useEffect(() => {
     modalData.forEach(item => {
       if (item.type === 'book') {
@@ -132,7 +127,6 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(
     });
   }, [expandedBook, modalData, getOrCreateAnimatedValue]);
 
-  // Memoize chapters data to avoid recalculating on every render
   const chaptersData = useMemo(() => {
     const chapters = new Map<string, Extract<ModalListItem, { type: 'chapter' }>[]>();
     modalData.forEach(item => {
@@ -218,7 +212,6 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(
         </View>
       );
     } else {
-      // Skip rendering chapter items individually since they're now rendered inside book items
       return null;
     }
   }, [onBookToggle, onChapterSelect, expandedBook, chaptersData, getOrCreateAnimatedValue, currentBook, currentChapter, theme.colors]);
@@ -299,7 +292,6 @@ export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(
               onScroll={() => Keyboard.dismiss()}
               onScrollToIndexFailed={(error) => {
                 console.warn('Scroll to index failed:', error);
-                // Fallback: scroll to offset instead
                 const offset = error.index * 60;
                 flatListRef.current?.scrollToOffset({ offset, animated: true });
               }}
@@ -324,8 +316,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     overflow: 'hidden',
     height: '90%',
-    elevation: 8, // Android shadow
-    shadowColor: '#000', // iOS shadow
+    elevation: 8, 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

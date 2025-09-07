@@ -22,7 +22,6 @@ const AppContent: React.FC = React.memo(() => {
   
   const [activeTab, setActiveTab] = useState<TabKey>('bible');
 
-  // All hooks must be called before any conditional returns
   const handleVerseSelect = useCallback((book: string, chapter: number) => {
     setBook(book);
     setChapter(chapter);
@@ -59,7 +58,6 @@ const AppContent: React.FC = React.memo(() => {
     }
   }, [activeTab, handleVerseSelect, bookmarks, handleDeleteBookmark, handleAddNote]);
 
-  // Show loading screen while data is being loaded
   if (!isLoaded) {
     return (
       <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.colors.primary }]}>

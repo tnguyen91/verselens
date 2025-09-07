@@ -88,21 +88,18 @@ export const BibleReader = React.memo(() => {
   }, [expandedBookInModal]);
 
   const handleChapterSelectFromModal = useCallback((book: string, chapter: number) => {
-    // First close the modal with animation
     setIsBookSelectionModalVisible(false);
     
-    // Then update the book/chapter after the modal animation completes
     setTimeout(() => {
       setBook(book);
       setChapter(chapter);
       setExpandedBookInModal(null);
       scrollToTop();
-    }, 300); // Match the modal's animationOutTiming
+    }, 300); 
   }, [setBook, setChapter, scrollToTop]);
 
   const handleModalClose = useCallback(() => {
     setIsBookSelectionModalVisible(false);
-    // The BookSelectionModal handles its own expanded book state cleanup
   }, []);
 
   const navigateToNextChapter = useCallback(() => {

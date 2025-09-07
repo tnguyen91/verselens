@@ -30,20 +30,17 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingRemoteTranslation, setLoadingRemoteTranslation] = useState(false);
 
-  // Initialize available translations on mount
   useEffect(() => {
     const initializeTranslations = async () => {
       try {
         const translations = await BibleDataService.getAllTranslations();
         setAvailableTranslations(translations);
         
-        // Load default translation (ESV)
         if (translations.length > 0) {
           const defaultTranslation = translations.find(t => t.name.toUpperCase() === 'ESV') || translations[0];
           await setTranslation(defaultTranslation.id);
         } else {
           console.error('No translations found');
-          // Set a minimal fallback to prevent infinite loading
           setCurrentTranslation({
             id: 'error',
             name: 'Error',
@@ -53,7 +50,6 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error('Failed to initialize translations:', error);
-        // Set error state to prevent infinite loading
         setCurrentTranslation({
           id: 'error',
           name: 'Error - Check Internet Connection',
@@ -68,7 +64,6 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
     initializeTranslations();
   }, []);
 
-  // All translations are now remote and fetched dynamically
   const remoteTranslations = availableTranslations.map(t => t.name);
 
   const setTranslation = useCallback(async (translationId: string) => {
@@ -80,23 +75,21 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
       
       const remoteTranslation: Translation = {
         id: translationAbbr.toLowerCase(),
-        name: translationAbbr, // Use translation name
+        name: translationAbbr, 
         data: result.data,
         isLocal: false,
       };
       
       setCurrentTranslation(remoteTranslation);
       
-      // Update available translations with loaded data
       setAvailableTranslations(prev => 
         prev.map(t => t.name.toUpperCase() === translationAbbr ? remoteTranslation : t)
       );
       
     } catch (error) {
       console.error(`Failed to load ${translationAbbr} translation:`, error);
-      // Don't set any translation if API fails - let the user know
       alert(`Failed to load ${translationAbbr} translation. Please check your internet connection and try again.`);
-      throw error; // Re-throw to be caught by initialization
+      throw error; 
     } finally {
       setLoadingRemoteTranslation(false);
     }
@@ -123,7 +116,6 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
     return Object.entries(chapterData) as [string, string][];
   }, [currentTranslation, selectedBook, selectedChapter]);
 
-  // Show loading state until default translation is loaded
   if (isLoading || !currentTranslation) {
     return (
       <View style={styles.loadingContainer}>
@@ -167,11 +159,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000', // Use dark background to match app theme
+    backgroundColor: '#000000', 
   },
   loadingText: {
     marginTop: 16,
     fontSize: 18,
-    color: '#ffffff', // Use white text to match dark theme
+    color: '#ffffff', 
   },
 });

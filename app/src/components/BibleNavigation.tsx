@@ -69,7 +69,7 @@ export const BibleNavigation: React.FC<BibleNavigationProps> = React.memo(({
 const styles = StyleSheet.create({
   navigationButtonsContainer: {
     position: "absolute",
-    bottom: 85, // Position above the tab bar (tab bar height ~70-80px)
+    bottom: 85, 
     left: 0,
     right: 0,
     flexDirection: "row",
