@@ -157,7 +157,6 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
       const fileName = `verselens-backup-${new Date().toISOString().split('T')[0]}.json`;
       
       if (Platform.OS === 'web') {
-        // On web, use browser download API
         const blob = new Blob([dataString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -170,7 +169,6 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
         return;
       }
 
-      // Native mobile file export
       const fileUri = FileSystem.documentDirectory + fileName;
       
       await FileSystem.writeAsStringAsync(fileUri, dataString);
@@ -192,7 +190,6 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
   const importFromFile = useCallback(async (): Promise<void> => {
     try {
       if (Platform.OS === 'web') {
-        // On web, use file input
         return new Promise((resolve, reject) => {
           const input = document.createElement('input');
           input.type = 'file';
@@ -223,7 +220,6 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
         });
       }
 
-      // Native mobile file import
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/json',
         copyToCacheDirectory: true,

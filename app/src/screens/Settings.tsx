@@ -7,12 +7,12 @@ import {
   SafeAreaView,
   ScrollView,
   Switch,
-  Alert,
   Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { useUserData } from '../contexts/UserDataContext';
+import { Alert } from '../utils/alert';
 
 export const Settings = React.memo(() => {
   const { theme, setTheme } = useTheme();

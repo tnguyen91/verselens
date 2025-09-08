@@ -4,7 +4,6 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
-  Alert,
   Platform,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -17,6 +16,7 @@ import { BibleNavigation } from '../components/BibleNavigation';
 import { BookSelectionModal } from '../components/BookSelectionModal';
 import { BibleDataService } from '../services/BibleDataService';
 import { ModalListItem } from '../types/bible';
+import { Alert } from '../utils/alert';
 
 export const BibleReader = React.memo(() => {
   const { theme } = useTheme();

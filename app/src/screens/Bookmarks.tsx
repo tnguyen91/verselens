@@ -7,11 +7,11 @@ import {
   StyleSheet,
   SafeAreaView,
   TextInput,
-  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { Bookmark } from '../types/bible';
+import { Alert } from '../utils/alert';
 
 interface BookmarksProps {
   bookmarks: Bookmark[];
