@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Modal from 'react-native-modal';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
 import { BibleDataService } from '../services/BibleDataService';
@@ -35,6 +36,11 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
 
   useEffect(() => {
     const configureAudio = async () => {
+      if (Platform.OS === 'web') {
+        // Audio not supported on web
+        return;
+      }
+      
       try {
         await Audio.setAudioModeAsync({
           staysActiveInBackground: false,
@@ -64,6 +70,21 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   }, []);
 
   const playPronunciation = useCallback(async (audioUrl: string) => {
+    if (Platform.OS === 'web') {
+      // On web, try HTML5 audio
+      try {
+        const audio = new window.Audio(audioUrl);
+        setIsPlayingAudio(true);
+        await audio.play();
+        audio.onended = () => setIsPlayingAudio(false);
+      } catch (error) {
+        console.warn('Web audio playback not supported:', error);
+        setIsPlayingAudio(false);
+      }
+      return;
+    }
+
+    // Mobile audio handling
     try {
       setIsPlayingAudio(true);
       
@@ -71,6 +92,7 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
         await currentSound.unloadAsync();
       }
       
+      // Create and configure the sound
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { shouldPlay: true }
@@ -78,6 +100,7 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
       
       setCurrentSound(sound);
       
+      // Set up playback status update
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlayingAudio(false);

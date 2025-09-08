@@ -155,6 +155,22 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
     try {
       const dataString = await exportData();
       const fileName = `verselens-backup-${new Date().toISOString().split('T')[0]}.json`;
+      
+      if (Platform.OS === 'web') {
+        // On web, use browser download API
+        const blob = new Blob([dataString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Native mobile file export
       const fileUri = FileSystem.documentDirectory + fileName;
       
       await FileSystem.writeAsStringAsync(fileUri, dataString);
@@ -175,6 +191,39 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
 
   const importFromFile = useCallback(async (): Promise<void> => {
     try {
+      if (Platform.OS === 'web') {
+        // On web, use file input
+        return new Promise((resolve, reject) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json';
+          input.onchange = async (event: any) => {
+            try {
+              const file = event.target.files[0];
+              if (!file) return;
+              
+              const reader = new FileReader();
+              reader.onload = async (e) => {
+                try {
+                  const content = e.target?.result as string;
+                  await importData(content);
+                  resolve();
+                } catch (error) {
+                  reject(error);
+                }
+              };
+              reader.readAsText(file);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          document.body.appendChild(input);
+          input.click();
+          document.body.removeChild(input);
+        });
+      }
+
+      // Native mobile file import
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/json',
         copyToCacheDirectory: true,

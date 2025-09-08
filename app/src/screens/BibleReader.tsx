@@ -5,6 +5,7 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../contexts/ThemeContext';
@@ -161,8 +162,10 @@ export const BibleReader = React.memo(() => {
     handleBookmarkToggle
   ]);
 
+  const AppWrapper = Platform.OS === 'web' ? View : GestureHandlerRootView;
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <AppWrapper style={{ flex: 1 }}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.primary }]}>
         <BibleHeader
           onBookChapterPress={() => setIsBookSelectionModalVisible(true)}
@@ -208,7 +211,7 @@ export const BibleReader = React.memo(() => {
           onNext={navigateToNextChapter}
         />
       </SafeAreaView>
-    </GestureHandlerRootView>
+    </AppWrapper>
   );
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableHighlight, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, TouchableHighlight, TouchableOpacity, StyleSheet, StatusBar, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
@@ -85,7 +85,7 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
 const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: 10,
-    paddingTop: StatusBar.currentHeight || 10,
+    paddingTop: Platform.OS === 'web' ? 10 : (StatusBar.currentHeight || 10),
     paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
