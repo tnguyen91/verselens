@@ -12,7 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
-import { BibleDataService } from '../services/BibleDataService';
+import { DictionaryService } from '../services/DictionaryService';
 import { DictionaryEntry } from '../types/bible';
 
 interface WordDefinitionModalProps {
@@ -24,7 +24,7 @@ interface WordDefinitionModalProps {
 export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   word,
   isVisible,
-  onClose,
+  onClose
 }) => {
   const { theme } = useTheme();
   const [definitions, setDefinitions] = useState<DictionaryEntry[]>([]);
@@ -58,7 +58,7 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     setError(null);
     
     try {
-      const result = await BibleDataService.fetchWordDefinition(searchWord);
+      const result = await DictionaryService.fetchWordDefinition(searchWord);
       setDefinitions(result);
     } catch (err) {
       setError('Definition not found');

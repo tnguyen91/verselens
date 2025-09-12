@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableHighlight, TouchableOpacity, StyleSheet, StatusBar, Platform } from 'react-native';
+import { View, Text, TouchableHighlight, TouchableOpacity, StyleSheet, StatusBar, Platform, Pressable } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
@@ -57,7 +57,7 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
         </View>
 
         <View style={styles.rightContainer}>
-          <TouchableOpacity
+          <Pressable
             style={[styles.toggleButton, { 
               backgroundColor: theme.colors.tertiary,
               borderWidth: 1,
@@ -70,7 +70,7 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
               size={24}
               color={theme.colors.textSecondary}
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 

@@ -1,7 +1,6 @@
-import { BibleDataStructure, BibleTranslation, DictionaryEntry, CurrentReference, TranslationInfo } from '../types/bible';
+import { BibleDataStructure, BibleTranslation, CurrentReference, TranslationInfo } from '../types/bible';
 
 const BIBLE_API_BASE = 'https://raw.githubusercontent.com/jadenzaleski/BibleTranslations/master';
-const DICTIONARY_API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en';
 
 const remoteTranslationCache = new Map<string, BibleTranslation>();
 let availableTranslationsCache: TranslationInfo[] | null = null;
@@ -94,23 +93,6 @@ export class BibleDataService {
     remoteTranslationCache.set(translation, data);
     
     return { data };
-  }
-
-  static async fetchWordDefinition(word: string): Promise<DictionaryEntry[]> {
-    try {
-      const cleanWord = word.toLowerCase().replace(/[^a-zA-Z]/g, '');
-      const response = await fetch(`${DICTIONARY_API_BASE}/${cleanWord}`);
-      
-      if (!response.ok) {
-        throw new Error(`Word not found: ${word}`);
-      }
-      
-      const data: DictionaryEntry[] = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`Error fetching definition for "${word}":`, error);
-      throw error;
-    }
   }
 
   static getNextChapter(book: string, chapter: number, bibleData?: BibleTranslation): { book: string; chapter: number } | null {
