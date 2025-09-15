@@ -39,10 +39,8 @@ export interface CurrentReference {
 }
 
 export interface DictionaryDefinition {
-  definition: string;
-  example?: string;
-  synonyms?: string[];
-  antonyms?: string[];
+  wordnet?: string[];
+  easton?: string[];
 }
 
 export interface DictionaryPhonetic {
@@ -56,10 +54,9 @@ export interface DictionaryMeaning {
 }
 
 export interface DictionaryEntry {
-  word: string;  
-  phonetic?: string;
-  phonetics: DictionaryPhonetic[];
-  meanings: DictionaryMeaning[];
+  word: string;
+  pronounciation: DictionaryPhonetic[];
+  definitions: DictionaryDefinition;
 }
 
 export interface TranslationInfo {

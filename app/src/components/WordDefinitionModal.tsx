@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
 import { DictionaryService } from '../services/DictionaryService';
-import { DictionaryEntry } from '../types/bible';
+import { DictionaryEntry, DictionaryPhonetic } from '../types/bible';
 
 interface WordDefinitionModalProps {
   word: string | null;
@@ -27,12 +27,13 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   onClose
 }) => {
   const { theme } = useTheme();
-  const [definitions, setDefinitions] = useState<DictionaryEntry[]>([]);
+  const [definitions, setDefinitions] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentWord, setCurrentWord] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentSound, setCurrentSound] = useState<Audio.Sound | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('wordnet');
 
   useEffect(() => {
     const configureAudio = async () => {
@@ -60,6 +61,8 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     try {
       const result = await DictionaryService.fetchWordDefinition(searchWord);
       setDefinitions(result);
+      // Set default active tab to wordnet if available, otherwise easton
+      setActiveTab(result.definitions.wordnet ? 'wordnet' : (result.definitions.easton ? 'easton' : ''));
     } catch (err) {
       setError('Definition not found');
       console.error('Error fetching definition:', err);
@@ -130,7 +133,27 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     }
   }, [isVisible, word, fetchDefinition]);
 
-  const mainEntry = useMemo(() => definitions[0], [definitions]);
+  const availableTabs = useMemo(() => {
+    if (!definitions) return [];
+    const tabs: string[] = [];
+    if (definitions.definitions.wordnet && definitions.definitions.wordnet.length > 0) {
+      tabs.push('wordnet');
+    }
+    if (definitions.definitions.easton && definitions.definitions.easton.length > 0) {
+      tabs.push('easton');
+    }
+    return tabs;
+  }, [definitions]);
+  
+  const currentDefinitions = useMemo(() => {
+    if (!definitions || !activeTab) return [];
+    return definitions.definitions[activeTab as keyof typeof definitions.definitions] || [];
+  }, [definitions, activeTab]);
+  
+  const phoneticsWithAudio = useMemo(() => {
+    if (!definitions?.pronounciation) return [];
+    return definitions.pronounciation.filter((p: DictionaryPhonetic) => p.text && p.audio);
+  }, [definitions]);
 
   return (
     <Modal
@@ -187,55 +210,84 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
             </View>
           )}
 
-          {mainEntry && !loading && (
+          {definitions && !loading && (
             <>
-              {(mainEntry.phonetic || mainEntry.phonetics?.length > 0) && (
+              {phoneticsWithAudio.length > 0 && (
                 <View style={[styles.pronunciationSection, { borderBottomColor: theme.colors.border }]}>
-                  <Text style={[styles.phoneticText, { color: theme.colors.textMuted }]}>
-                    {mainEntry.phonetic || mainEntry.phonetics[0]?.text}
+                  <Text style={[styles.pronunciationLabel, { color: theme.colors.textMuted }]}>
+                    Pronunciation:
                   </Text>
-                  {(() => {
-                    const audioPhonetic = mainEntry.phonetics?.find(p => p.audio);
-                    return audioPhonetic?.audio ? (
+                  <View style={styles.phoneticsList}>
+                    {phoneticsWithAudio.map((phonetic: DictionaryPhonetic, index: number) => (
                       <TouchableOpacity 
+                        key={index}
                         style={[styles.pronunciationButton, { 
                           backgroundColor: theme.colors.tertiary,
+                          borderColor: theme.colors.border
                         }]}
-                        onPress={() => playPronunciation(audioPhonetic.audio!)}
+                        onPress={() => playPronunciation(phonetic.audio!)}
                         disabled={isPlayingAudio}
                       >
+                        <Text style={[styles.phoneticText, { color: theme.colors.textPrimary }]}>
+                          {phonetic.text}
+                        </Text>
                         <Icon 
-                          name={isPlayingAudio ? "volume-high" : "volume-low"} 
-                          size={20} 
+                          name={isPlayingAudio ? "volume-high" : "volume-medium"} 
+                          size={18} 
                           color={isPlayingAudio ? theme.colors.accent : theme.colors.textMuted} 
                         />
                       </TouchableOpacity>
-                    ) : null;
-                  })()}
+                    ))}
+                  </View>
                 </View>
               )}
 
-              <View style={styles.definitionsSection}>
-                {mainEntry.meanings.slice(0, 2).map((meaning, meaningIndex) => (
-                  <View key={meaningIndex} style={styles.meaningGroup}>
-                    <Text style={[styles.partOfSpeech, { color: theme.colors.accent }]}>
-                      {meaning.partOfSpeech}
-                    </Text>
-                    {meaning.definitions.slice(0, 2).map((def, defIndex) => (
+              {availableTabs.length > 1 && (
+                <View style={[styles.tabsContainer, { borderBottomColor: theme.colors.border }]}>
+                  {availableTabs.map((tab: string) => (
+                    <TouchableOpacity
+                      key={tab}
+                      style={[
+                        styles.tabButton,
+                        {
+                          backgroundColor: activeTab === tab ? theme.colors.accent : theme.colors.tertiary,
+                          borderColor: theme.colors.border
+                        }
+                      ]}
+                      onPress={() => setActiveTab(tab)}
+                    >
+                      <Text style={[
+                        styles.tabText,
+                        {
+                          color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary,
+                          fontWeight: activeTab === tab ? '600' : '500'
+                        }
+                      ]}>
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {currentDefinitions.length > 0 && (
+                <View style={styles.definitionsSection}>
+                  <View style={styles.meaningGroup}>
+                    {availableTabs.length === 1 && (
+                      <Text style={[styles.partOfSpeech, { color: theme.colors.accent }]}>
+                        {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                      </Text>
+                    )}
+                    {currentDefinitions.map((definition: string, defIndex: number) => (
                       <View key={defIndex} style={[styles.definitionItem, { borderLeftColor: theme.colors.border }]}>
                         <Text style={[styles.definitionText, { color: theme.colors.textPrimary }]}>
-                          {def.definition}
+                          {definition}
                         </Text>
-                        {def.example && (
-                          <Text style={[styles.exampleText, { color: theme.colors.textMuted }]}>
-                            "{def.example}"
-                          </Text>
-                        )}
                       </View>
                     ))}
                   </View>
-                ))}
-              </View>
+                </View>
+              )}
             </>
           )}
         </ScrollView>
@@ -311,19 +363,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pronunciationSection: {
+    flexDirection: 'column',
+    gap: 12,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  pronunciationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  phoneticsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  phoneticText: {
+    fontSize: 16,
+    fontStyle: 'italic',
+  },
+  pronunciationButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
     gap: 8,
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  phoneticText: {
-    fontSize: 20,
-    fontStyle: 'italic',
+  tabButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  pronunciationButton: {
-    padding: 4,
-    borderRadius: 10,
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   definitionsSection: {
     paddingVertical: 20,
