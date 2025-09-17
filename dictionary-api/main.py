@@ -16,9 +16,6 @@ app = FastAPI(title="Dictionary API", description="A dictionary API using WordNe
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
 )
 
 wordnet_service = WordNetService()
@@ -47,39 +44,48 @@ async def health_check():
     return {
         "status": "healthy", 
         "wordnet_available": True, 
-        "merriam_webster_configured": merriam_webster_api_key != "your-api-key-here"
+        "merriam_webster_configured": bool(merriam_webster_api_key and merriam_webster_api_key.strip())
     }
 
 @app.get("/api/define/{word}", response_model=WordDefinition)
 async def define_word(word: str):
-    if not word or len(word.strip()) == 0:
-        raise HTTPException(status_code=400, detail="Word parameter is required")
-    
-    clean_word = re.sub(r'[^a-zA-Z]', '', word.lower().strip())
-    
-    # WordNet 
-    wordnet_definitions = wordnet_service.get_simple_definitions(clean_word)
-    
-    if not wordnet_definitions:
-        raise HTTPException(status_code=404, detail=f"No definitions found for '{word}'")
-    
-    # Merriam-Webster 
-    pronunciations = merriam_service.get_pronunciation(clean_word)
-    phonetics = []
-    for pronunciation in pronunciations:
-        phonetics.append(PhoneticData(
-            text=pronunciation.get("text"),
-            audio=pronunciation.get("audio")
-        ))
-    
-    # response
-    response = WordDefinition(
-        word=clean_word,
-        pronunciation={"phonetics": phonetics} if phonetics else None,
-        definitions=DefinitionData(wordnet=wordnet_definitions)
-    )
-    
-    return response
+    try:
+        if not word or len(word.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Word parameter is required")
+        
+        clean_word = re.sub(r'[^a-zA-Z]', '', word.lower().strip())
+        
+        if not clean_word:
+            raise HTTPException(status_code=400, detail="Invalid word format")
+        
+        # WordNet 
+        wordnet_definitions = wordnet_service.get_simple_definitions(clean_word)
+        
+        if not wordnet_definitions:
+            raise HTTPException(status_code=404, detail=f"No definitions found for '{word}'")
+        
+        # Merriam-Webster 
+        pronunciations = merriam_service.get_pronunciation(clean_word)
+        phonetics = []
+        for pronunciation in pronunciations:
+            phonetics.append(PhoneticData(
+                text=pronunciation.get("text"),
+                audio=pronunciation.get("audio")
+            ))
+        
+        # response
+        response = WordDefinition(
+            word=clean_word,
+            pronunciation={"phonetics": phonetics} if phonetics else None,
+            definitions=DefinitionData(wordnet=wordnet_definitions)
+        )
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing word '{word}': {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
