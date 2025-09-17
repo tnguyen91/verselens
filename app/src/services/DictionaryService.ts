@@ -1,6 +1,6 @@
 import { DictionaryEntry } from '../types/bible';
 
-const DICTIONARY_API_BASE = 'https://dictionary-api-yxjj.onrender.com';
+const DICTIONARY_API_BASE = 'https://verselens-dictionary-production.up.railway.app';
 
 interface ApiResponse {
   word: string;
@@ -12,7 +12,6 @@ interface ApiResponse {
   };
   definitions?: {
     wordnet?: string[];
-    easton?: string[];
   };
 }
 
@@ -36,14 +35,8 @@ export class DictionaryService {
         definitions: {}
       };
 
-      // Add WordNet definitions if available
       if (apiData.definitions?.wordnet) {
         entry.definitions.wordnet = apiData.definitions.wordnet;
-      }
-
-      // Add Easton definitions if available
-      if (apiData.definitions?.easton) {
-        entry.definitions.easton = apiData.definitions.easton;
       }
 
       return entry;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
 import { DictionaryService } from '../services/DictionaryService';
-import { DictionaryEntry, DictionaryPhonetic } from '../types/bible';
+import { DictionaryEntry } from '../types/bible';
 
 interface WordDefinitionModalProps {
   word: string | null;
@@ -27,13 +27,12 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   onClose
 }) => {
   const { theme } = useTheme();
-  const [definitions, setDefinitions] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentWord, setCurrentWord] = useState<string | null>(null);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [definition, setDefinition] = useState<DictionaryEntry | null>(null);
+  const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [currentSound, setCurrentSound] = useState<Audio.Sound | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('wordnet');
 
   useEffect(() => {
     const configureAudio = async () => {
@@ -57,36 +56,70 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   const fetchDefinition = useCallback(async (searchWord: string) => {
     setLoading(true);
     setError(null);
+    setDefinition(null);
     
     try {
       const result = await DictionaryService.fetchWordDefinition(searchWord);
-      setDefinitions(result);
-      // Set default active tab to wordnet if available, otherwise easton
-      setActiveTab(result.definitions.wordnet ? 'wordnet' : (result.definitions.easton ? 'easton' : ''));
+      setDefinition(result);
     } catch (err) {
-      setError('Definition not found');
-      console.error('Error fetching definition:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch definition');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const groupDefinitionsByPOS = useCallback((definitions: string[]) => {
+    const grouped: Record<string, string[]> = {};
+    
+    definitions.forEach(def => {
+      const match = def.match(/^([^:]+):\s*(.+)$/);
+      if (match) {
+        const [, pos, definition] = match;
+        const posKey = pos.trim().toLowerCase();
+        if (!grouped[posKey]) {
+          grouped[posKey] = [];
+        }
+        grouped[posKey].push(definition.trim());
+      } else {
+        if (!grouped['other']) {
+          grouped['other'] = [];
+        }
+        grouped['other'].push(def);
+      }
+    });
+    
+    return grouped;
+  }, []);
+
+  const formatPOSLabel = useCallback((pos: string) => {
+    const posLabels: Record<string, string> = {
+      'noun': 'Nouns',
+      'verb': 'Verbs',
+      'adjective': 'Adjectives',
+      'adjective satellite': 'Similar Adjectives',
+      'adverb': 'Adverbs',
+      'other': 'Other'
+    };
+    
+    return posLabels[pos] || pos.charAt(0).toUpperCase() + pos.slice(1) + 's';
   }, []);
 
   const playPronunciation = useCallback(async (audioUrl: string) => {
     if (Platform.OS === 'web') {
       try {
         const audio = new window.Audio(audioUrl);
-        setIsPlayingAudio(true);
+        setPlayingAudioUrl(audioUrl);
         await audio.play();
-        audio.onended = () => setIsPlayingAudio(false);
+        audio.onended = () => setPlayingAudioUrl(null);
       } catch (error) {
         console.warn('Web audio playback not supported:', error);
-        setIsPlayingAudio(false);
+        setPlayingAudioUrl(null);
       }
       return;
     }
 
     try {
-      setIsPlayingAudio(true);
+      setPlayingAudioUrl(audioUrl);
       
       if (currentSound) {
         await currentSound.unloadAsync();
@@ -101,14 +134,14 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
       
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
-          setIsPlayingAudio(false);
+          setPlayingAudioUrl(null);
           setCurrentSound(null);
         }
       });
       
     } catch (error) {
       console.warn('Audio playback not supported or failed:', error);
-      setIsPlayingAudio(false);
+      setPlayingAudioUrl(null);
       setCurrentSound(null);
     }
   }, [currentSound]);
@@ -117,7 +150,7 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     if (!isVisible && currentSound) {
       currentSound.unloadAsync();
       setCurrentSound(null);
-      setIsPlayingAudio(false);
+      setPlayingAudioUrl(null);
     }
   }, [isVisible, currentSound]);
 
@@ -128,32 +161,12 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
     } else if (!isVisible) {
       const timer = setTimeout(() => {
         setCurrentWord(null);
+        setDefinition(null);
+        setError(null);
       }, 300);
       return () => clearTimeout(timer);
     }
   }, [isVisible, word, fetchDefinition]);
-
-  const availableTabs = useMemo(() => {
-    if (!definitions) return [];
-    const tabs: string[] = [];
-    if (definitions.definitions.wordnet && definitions.definitions.wordnet.length > 0) {
-      tabs.push('wordnet');
-    }
-    if (definitions.definitions.easton && definitions.definitions.easton.length > 0) {
-      tabs.push('easton');
-    }
-    return tabs;
-  }, [definitions]);
-  
-  const currentDefinitions = useMemo(() => {
-    if (!definitions || !activeTab) return [];
-    return definitions.definitions[activeTab as keyof typeof definitions.definitions] || [];
-  }, [definitions, activeTab]);
-  
-  const phoneticsWithAudio = useMemo(() => {
-    if (!definitions?.pronounciation) return [];
-    return definitions.pronounciation.filter((p: DictionaryPhonetic) => p.text && p.audio);
-  }, [definitions]);
 
   return (
     <Modal
@@ -210,85 +223,74 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
             </View>
           )}
 
-          {definitions && !loading && (
-            <>
-              {phoneticsWithAudio.length > 0 && (
+          {definition && !loading && !error && (
+            <View>
+              {/* Pronunciation Section */}
+              {definition.pronounciation && definition.pronounciation.length > 0 && (
                 <View style={[styles.pronunciationSection, { borderBottomColor: theme.colors.border }]}>
-                  <Text style={[styles.pronunciationLabel, { color: theme.colors.textMuted }]}>
-                    Pronunciation:
-                  </Text>
                   <View style={styles.phoneticsList}>
-                    {phoneticsWithAudio.map((phonetic: DictionaryPhonetic, index: number) => (
-                      <TouchableOpacity 
-                        key={index}
-                        style={[styles.pronunciationButton, { 
-                          backgroundColor: theme.colors.tertiary,
-                          borderColor: theme.colors.border
-                        }]}
-                        onPress={() => playPronunciation(phonetic.audio!)}
-                        disabled={isPlayingAudio}
-                      >
-                        <Text style={[styles.phoneticText, { color: theme.colors.textPrimary }]}>
-                          {phonetic.text}
-                        </Text>
-                        <Icon 
-                          name={isPlayingAudio ? "volume-high" : "volume-medium"} 
-                          size={18} 
-                          color={isPlayingAudio ? theme.colors.accent : theme.colors.textMuted} 
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
+                    {definition.pronounciation.map((phonetic, index) => (
+                      <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {phonetic.text && phonetic.audio && (
+                          <TouchableOpacity
+                            onPress={() => playPronunciation(phonetic.audio!)}
+                            disabled={playingAudioUrl === phonetic.audio}
+                            style={[
+                              styles.pronunciationButton,
+                              {
+                                backgroundColor: theme.colors.tertiary,
+                                borderColor: theme.colors.border,
+                                opacity: playingAudioUrl === phonetic.audio ? 0.6 : 1,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.tabText, { color: theme.colors.textSecondary }]}>
+                              {phonetic.text}
+                            </Text>
 
-              {availableTabs.length > 1 && (
-                <View style={[styles.tabsContainer, { borderBottomColor: theme.colors.border }]}>
-                  {availableTabs.map((tab: string) => (
-                    <TouchableOpacity
-                      key={tab}
-                      style={[
-                        styles.tabButton,
-                        {
-                          backgroundColor: activeTab === tab ? theme.colors.accent : theme.colors.tertiary,
-                          borderColor: theme.colors.border
-                        }
-                      ]}
-                      onPress={() => setActiveTab(tab)}
-                    >
-                      <Text style={[
-                        styles.tabText,
-                        {
-                          color: activeTab === tab ? theme.colors.primary : theme.colors.textSecondary,
-                          fontWeight: activeTab === tab ? '600' : '500'
-                        }
-                      ]}>
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {currentDefinitions.length > 0 && (
-                <View style={styles.definitionsSection}>
-                  <View style={styles.meaningGroup}>
-                    {availableTabs.length === 1 && (
-                      <Text style={[styles.partOfSpeech, { color: theme.colors.accent }]}>
-                        {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-                      </Text>
-                    )}
-                    {currentDefinitions.map((definition: string, defIndex: number) => (
-                      <View key={defIndex} style={[styles.definitionItem, { borderLeftColor: theme.colors.border }]}>
-                        <Text style={[styles.definitionText, { color: theme.colors.textPrimary }]}>
-                          {definition}
-                        </Text>
+                            <Icon
+                              name={playingAudioUrl === phonetic.audio ? "volume-high" : "volume-low"}
+                              size={16}
+                              color={theme.colors.textSecondary}
+                            />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ))}
                   </View>
                 </View>
               )}
-            </>
+
+              {/* Definitions Section */}
+              {definition.definitions && (
+                <View style={styles.definitionsSection}>
+                  {definition.definitions.wordnet && definition.definitions.wordnet.length > 0 && (() => {
+                    const groupedDefinitions = groupDefinitionsByPOS(definition.definitions.wordnet);
+                    const posOrder = ['noun', 'verb', 'adjective', 'adjective satellite', 'adverb', 'other'];
+                    const sortedPOS = Object.keys(groupedDefinitions).sort((a, b) => {
+                      const indexA = posOrder.indexOf(a);
+                      const indexB = posOrder.indexOf(b);
+                      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                    });
+
+                    return sortedPOS.map(pos => (
+                      <View key={pos} style={styles.meaningGroup}>
+                        <Text style={[styles.partOfSpeech, { color: theme.colors.accent }]}>
+                          {formatPOSLabel(pos)}
+                        </Text>
+                        {groupedDefinitions[pos].map((def, index) => (
+                          <View key={`${pos}-${index}`} style={[styles.definitionItem, { borderLeftColor: theme.colors.accent }]}>
+                            <Text style={[styles.definitionText, { color: theme.colors.textPrimary }]}>
+                              {def}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ));
+                  })()}
+                </View>
+              )}
+            </View>
           )}
         </ScrollView>
       </View>
@@ -368,18 +370,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  pronunciationLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   phoneticsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  phoneticText: {
-    fontSize: 16,
-    fontStyle: 'italic',
   },
   pronunciationButton: {
     flexDirection: 'row',
@@ -389,18 +383,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     gap: 8,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
   },
   tabText: {
     fontSize: 14,
@@ -427,10 +409,5 @@ const styles = StyleSheet.create({
   definitionText: {
     fontSize: 16,
     lineHeight: 20,
-  },
-  exampleText: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    lineHeight: 18,
   },
 });

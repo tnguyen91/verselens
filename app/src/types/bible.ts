@@ -40,17 +40,11 @@ export interface CurrentReference {
 
 export interface DictionaryDefinition {
   wordnet?: string[];
-  easton?: string[];
 }
 
 export interface DictionaryPhonetic {
   text: string;
   audio?: string;
-}
-
-export interface DictionaryMeaning {
-  partOfSpeech: string;
-  definitions: DictionaryDefinition[];
 }
 
 export interface DictionaryEntry {
