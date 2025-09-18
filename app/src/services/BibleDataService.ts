@@ -1,7 +1,6 @@
 import { BibleDataStructure, BibleTranslation, CurrentReference, TranslationInfo } from '../types/bible';
 
-// Use deployed AWS Lambda Bible API
-const BIBLE_API_BASE = 'https://3gxgwdn88j.execute-api.us-west-1.amazonaws.com/prod';
+const BIBLE_API_BASE = 'https://raw.githubusercontent.com/jadenzaleski/BibleTranslations/master';
 
 const remoteTranslationCache = new Map<string, BibleTranslation>();
 let availableTranslationsCache: TranslationInfo[] | null = null;
@@ -23,28 +22,29 @@ export class BibleDataService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      // Use deployed Bible API instead of GitHub API
-      const response = await fetch(`${BIBLE_API_BASE}/api/translations`, {
+      const response = await fetch('https://api.github.com/repos/jadenzaleski/BibleTranslations/contents', {
         signal: controller.signal
       });
       
       clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error(`Bible API failed: ${response.status}`);
+        throw new Error(`GitHub API failed: ${response.status}`);
       }
       
-      const data = await response.json();
+      const contents = await response.json();
       
-      const translationInfos = data.available.map((translation: string) => ({
-        name: translation 
-      }));
+      const translationFolders = contents
+        .filter((item: any) => item.type === 'dir')
+        .map((item: any) => ({
+          name: item.name 
+        }));
       
-      availableTranslationsCache = translationInfos;
-      return translationInfos;
+      availableTranslationsCache = translationFolders;
+      return translationFolders;
       
     } catch (error) {
-      console.error('Failed to fetch translations from Bible API:', error);
+      console.error('Failed to fetch translations from GitHub API:', error);
       throw new Error('Unable to load Bible translations. Please check your internet connection.');
     }
   }
@@ -65,7 +65,7 @@ export class BibleDataService {
       return { data: remoteTranslationCache.get(translation)! };
     }
 
-    const apiUrl = `${BIBLE_API_BASE}/api/${translation.toLowerCase()}`;
+    const apiUrl = `${BIBLE_API_BASE}/${translation}/${translation}_bible.json`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); 
@@ -84,8 +84,7 @@ export class BibleDataService {
       throw new Error(`HTTP ${response.status}: ${response.statusText} - Failed to fetch ${translation}`);
     }
     
-    const apiResponse = await response.json();
-    const data: BibleTranslation = apiResponse.data;
+    const data: BibleTranslation = await response.json();
     
     if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
       throw new Error(`Invalid Bible data received for ${translation}`);
