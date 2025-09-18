@@ -1,29 +1,76 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableHighlight, TouchableOpacity, StyleSheet, StatusBar, Platform, Pressable } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, TouchableHighlight, StyleSheet, StatusBar, Platform, Pressable } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
 import { useTranslationMode } from '../contexts/TranslationModeContext';
 import { TranslationModal } from './TranslationModal';
+import { BookSelectionModal } from './BookSelectionModal';
+import { ModalListItem } from '../types/bible';
 
 interface BibleHeaderProps {
-  onBookChapterPress: () => void;
 }
 
-export const BibleHeader: React.FC<BibleHeaderProps> = ({
-  onBookChapterPress,
-}) => {
+export const BibleHeader: React.FC<BibleHeaderProps> = () => {
   const { theme } = useTheme();
-  const { currentTranslation, loadingRemoteTranslation, selectedBook, selectedChapter } = useBible();
+  const { currentTranslation, loadingRemoteTranslation, selectedBook, selectedChapter, setBook, setChapter } = useBible();
   const { translationMode, toggleTranslationMode } = useTranslationMode();
   const [showTranslationModal, setShowTranslationModal] = useState(false);
+  const [showBookSelectionModal, setShowBookSelectionModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedBookInModal, setExpandedBookInModal] = useState<string | null>(null);
+
+  const bookNames = useMemo(() => Object.keys(currentTranslation.data), [currentTranslation.data]);
+  
+  const bookChapterModalData = useMemo(() => {
+    const filteredBookNames = bookNames.filter((book) =>
+      book.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    const result: ModalListItem[] = [];
+    
+    filteredBookNames.forEach(bookName => {
+      result.push({ type: 'book', bookName });
+      
+      if (expandedBookInModal === bookName) {
+        const bookData = currentTranslation.data[bookName];
+        if (bookData) {
+          const chapterNumbers = Object.keys(bookData).map(Number).sort((a, b) => a - b);
+          chapterNumbers.forEach(chapterNum => {
+            result.push({
+              type: 'chapter',
+              bookName,
+              chapterNumber: chapterNum
+            });
+          });
+        }
+      }
+    });
+
+    return result;
+  }, [searchQuery, bookNames, expandedBookInModal, currentTranslation.data]);
+
+  const handleBookToggleInModal = useCallback((book: string) => {
+    setExpandedBookInModal(expandedBookInModal === book ? null : book);
+  }, [expandedBookInModal]);
+
+  const handleChapterSelectFromModal = useCallback((book: string, chapter: number) => {
+    setShowBookSelectionModal(false);
+    setBook(book);
+    setChapter(chapter);
+    setExpandedBookInModal(null);
+  }, [setBook, setChapter]);
+
+  const handleBookSelectionModalClose = useCallback(() => {
+    setShowBookSelectionModal(false);
+  }, []);
 
   return (
     <>
       <View style={[styles.topBar, { backgroundColor: theme.colors.primary, borderBottomColor: theme.colors.border }]}>
         <View style={styles.leftContainer}>
           <TouchableHighlight
-            onPress={onBookChapterPress}
+            onPress={() => setShowBookSelectionModal(true)}
             underlayColor={theme.colors.overlayLight}
             style={[styles.bookButton, { 
               backgroundColor: theme.colors.tertiary,
@@ -73,6 +120,21 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
           </Pressable>
         </View>
       </View>
+
+      <BookSelectionModal
+        isVisible={showBookSelectionModal}
+        onClose={handleBookSelectionModalClose}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onClearSearch={() => setSearchQuery('')}
+        modalData={bookChapterModalData}
+        expandedBook={expandedBookInModal}
+        onBookToggle={handleBookToggleInModal}
+        onChapterSelect={handleChapterSelectFromModal}
+        currentBook={selectedBook}
+        currentChapter={selectedChapter}
+        setExpandedBook={setExpandedBookInModal}
+      />
 
       <TranslationModal
         isVisible={showTranslationModal}

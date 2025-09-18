@@ -13,9 +13,7 @@ import { useUserData } from '../contexts/UserDataContext';
 import { BibleVerse } from '../components/BibleVerse';
 import { BibleHeader } from '../components/BibleHeader';
 import { BibleNavigation } from '../components/BibleNavigation';
-import { BookSelectionModal } from '../components/BookSelectionModal';
 import { BibleDataService } from '../services/BibleDataService';
-import { ModalListItem } from '../types/bible';
 import { Alert } from '../utils/alert';
 
 export const BibleReader = React.memo(() => {
@@ -36,43 +34,9 @@ export const BibleReader = React.memo(() => {
     isBookmarked
   } = useUserData();
 
-  const [isBookSelectionModalVisible, setIsBookSelectionModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBookInModal, setExpandedBookInModal] = useState<string | null>(null);
-
   const flatListRef = useRef<FlatList>(null);
 
-  const bookNames = useMemo(() => Object.keys(currentTranslation.data), [currentTranslation.data]);
-  
   const currentVerseEntries = useMemo(() => getCurrentVerses(), [getCurrentVerses]);
-  
-  const bookChapterModalData = useMemo(() => {
-    const filteredBookNames = bookNames.filter((book) =>
-      book.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    
-    const result: ModalListItem[] = [];
-    
-    filteredBookNames.forEach(bookName => {
-      result.push({ type: 'book', bookName });
-      
-      if (expandedBookInModal === bookName) {
-        const bookData = currentTranslation.data[bookName];
-        if (bookData) {
-          const chapterNumbers = Object.keys(bookData).map(Number).sort((a, b) => a - b);
-          chapterNumbers.forEach(chapterNum => {
-            result.push({
-              type: 'chapter',
-              bookName,
-              chapterNumber: chapterNum
-            });
-          });
-        }
-      }
-    });
-
-    return result;
-  }, [searchQuery, bookNames, expandedBookInModal, currentTranslation.data]);
 
   const scrollToTop = useCallback(() => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
@@ -83,25 +47,6 @@ export const BibleReader = React.memo(() => {
     offset: 80 * index,
     index,
   }), []);
-
-  const handleBookToggleInModal = useCallback((book: string) => {
-    setExpandedBookInModal(expandedBookInModal === book ? null : book);
-  }, [expandedBookInModal]);
-
-  const handleChapterSelectFromModal = useCallback((book: string, chapter: number) => {
-    setIsBookSelectionModalVisible(false);
-    
-    setTimeout(() => {
-      setBook(book);
-      setChapter(chapter);
-      setExpandedBookInModal(null);
-      scrollToTop();
-    }, 300); 
-  }, [setBook, setChapter, scrollToTop]);
-
-  const handleModalClose = useCallback(() => {
-    setIsBookSelectionModalVisible(false);
-  }, []);
 
   const navigateToNextChapter = useCallback(() => {
     const nextChapter = BibleDataService.getNextChapter(selectedBook, selectedChapter, currentTranslation.data);
@@ -167,24 +112,7 @@ export const BibleReader = React.memo(() => {
   return (
     <AppWrapper style={{ flex: 1 }}>
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.primary }]}>
-        <BibleHeader
-          onBookChapterPress={() => setIsBookSelectionModalVisible(true)}
-        />
-
-        <BookSelectionModal
-          isVisible={isBookSelectionModalVisible}
-          onClose={handleModalClose}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onClearSearch={() => setSearchQuery('')}
-          modalData={bookChapterModalData}
-          expandedBook={expandedBookInModal}
-          onBookToggle={handleBookToggleInModal}
-          onChapterSelect={handleChapterSelectFromModal}
-          currentBook={selectedBook}
-          currentChapter={selectedChapter}
-          setExpandedBook={setExpandedBookInModal}
-        />
+        <BibleHeader />
 
         <FlatList
           ref={flatListRef}
