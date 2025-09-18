@@ -7,11 +7,9 @@ import { useTranslationMode } from '../contexts/TranslationModeContext';
 import { TranslationModal } from './TranslationModal';
 import { BookSelectionModal } from './BookSelectionModal';
 import { ModalListItem } from '../types/bible';
+import { platformStyles } from '../utils/platform';
 
-interface BibleHeaderProps {
-}
-
-export const BibleHeader: React.FC<BibleHeaderProps> = () => {
+export const BibleHeader = () => {
   const { theme } = useTheme();
   const { currentTranslation, loadingRemoteTranslation, selectedBook, selectedChapter, setBook, setChapter } = useBible();
   const { translationMode, toggleTranslationMode } = useTranslationMode();
@@ -147,16 +145,13 @@ export const BibleHeader: React.FC<BibleHeaderProps> = () => {
 const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: 10,
-    paddingTop: Platform.OS === 'web' ? 10 : (StatusBar.currentHeight || 10),
+    ...platformStyles.statusBarPadding,
     paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...platformStyles.shadow,
   },
   
   leftContainer: {

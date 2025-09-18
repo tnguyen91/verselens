@@ -9,10 +9,10 @@ import {
 } from 'react-native';
 import Modal from 'react-native-modal';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
 import { DictionaryService } from '../services/DictionaryService';
+import { isWeb } from '../utils/platform';
 import { DictionaryEntry } from '../types/bible';
 
 interface WordDefinitionModalProps {
@@ -36,7 +36,7 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
 
   useEffect(() => {
     const configureAudio = async () => {
-      if (Platform.OS === 'web') {
+      if (isWeb) {
         return;
       }
       
@@ -105,7 +105,7 @@ export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   }, []);
 
   const playPronunciation = useCallback(async (audioUrl: string) => {
-    if (Platform.OS === 'web') {
+    if (isWeb) {
       try {
         const audio = new window.Audio(audioUrl);
         setPlayingAudioUrl(audioUrl);

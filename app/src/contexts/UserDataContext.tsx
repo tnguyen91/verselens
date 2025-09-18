@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { Bookmark } from '../types/bible';
+import { isWeb, supportsWebFileAPI, supportsFileSystem } from '../utils/platform';
 
 const STORAGE_KEYS = {
   BOOKMARKS: '@verselens_bookmarks',
@@ -156,7 +157,7 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
       const dataString = await exportData();
       const fileName = `verselens-backup-${new Date().toISOString().split('T')[0]}.json`;
       
-      if (Platform.OS === 'web') {
+      if (isWeb) {
         const blob = new Blob([dataString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -189,7 +190,7 @@ export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) 
 
   const importFromFile = useCallback(async (): Promise<void> => {
     try {
-      if (Platform.OS === 'web') {
+      if (isWeb) {
         return new Promise((resolve, reject) => {
           const input = document.createElement('input');
           input.type = 'file';

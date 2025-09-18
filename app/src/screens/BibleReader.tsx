@@ -4,9 +4,7 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
-  Platform,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
 import { useUserData } from '../contexts/UserDataContext';
@@ -15,6 +13,7 @@ import { BibleHeader } from '../components/BibleHeader';
 import { BibleNavigation } from '../components/BibleNavigation';
 import { BibleDataService } from '../services/BibleDataService';
 import { Alert } from '../utils/alert';
+import { PlatformWrapper } from '../utils/platform';
 
 export const BibleReader = React.memo(() => {
   const { theme } = useTheme();
@@ -107,7 +106,7 @@ export const BibleReader = React.memo(() => {
     handleBookmarkToggle
   ]);
 
-  const AppWrapper = Platform.OS === 'web' ? View : GestureHandlerRootView;
+  const AppWrapper = PlatformWrapper;
 
   return (
     <AppWrapper style={{ flex: 1 }}>
