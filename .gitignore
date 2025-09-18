@@ -38,3 +38,6 @@ yarn-error.*
 venv/
 .venv
 __pycache__/
+
+.aws-sam/
+samconfig.toml
