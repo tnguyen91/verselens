@@ -1,0 +1,53 @@
+Transform: AWS::Serverless-2016-10-31
+Description: VerseLens Dictionary API
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.12
+
+Resources:
+  DictionaryAPI:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: main.handler
+      Runtime: python3.12
+      Environment:
+        Variables:
+          MERRIAM_WEBSTER_API_KEY: !Ref MerriamWebsterAPIKey
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref DictionaryApiGateway
+        RootPath:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref DictionaryApiGateway
+
+  DictionaryApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+Parameters:
+  MerriamWebsterAPIKey:
+    Type: String
+    Description: Merriam Webster API Key
+    Default: "your-api-key-here"
+    NoEcho: true
+
+Outputs:
+  DictionaryApiUrl:
+    Value: !Sub "https://${DictionaryApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+    Export:
+      Name: DictionaryApiUrl

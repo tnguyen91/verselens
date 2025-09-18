@@ -1,17 +1,27 @@
 import nltk
+import os
 from nltk.corpus import wordnet as wn
 from typing import List, Dict
 
 def ensure_nltk_data():
+    if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+        nltk.data.path.append('/tmp/nltk_data')
+        
     try:
         nltk.data.find('corpora/wordnet')
     except LookupError:
-        nltk.download('wordnet')
+        if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+            nltk.download('wordnet', download_dir='/tmp/nltk_data')
+        else:
+            nltk.download('wordnet')
 
     try:
         nltk.data.find('corpora/omw-1.4')
     except LookupError:
-        nltk.download('omw-1.4')
+        if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+            nltk.download('omw-1.4', download_dir='/tmp/nltk_data')
+        else:
+            nltk.download('omw-1.4')
 
 class WordNetService:
     def __init__(self):

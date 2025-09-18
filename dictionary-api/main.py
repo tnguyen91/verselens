@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 import re
 import os
 from dotenv import load_dotenv
+from mangum import Mangum
 
 load_dotenv()
 
@@ -37,7 +38,10 @@ class WordDefinition(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Dictionary API is running", "endpoints": ["/api/define/{word}", "/health"]}
+    return {
+        "message": "Dictionary API is running", 
+        "endpoints": ["/api/define/{word}", "/health"]
+    }
 
 @app.get("/health")
 async def health_check():
@@ -86,6 +90,8 @@ async def define_word(word: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing word '{word}': {str(e)}")
+
+handler = Mangum(app)
 
 if __name__ == "__main__":
     import uvicorn
