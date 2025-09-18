@@ -1,16 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-
-interface TranslationModeContextType {
-  translationMode: boolean;
-  setTranslationMode: (enabled: boolean) => void;
-  toggleTranslationMode: () => void;
-}
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { TranslationModeContextType, TranslationModeProviderProps } from '../types/contexts';
 
 const TranslationModeContext = createContext<TranslationModeContextType | undefined>(undefined);
-
-interface TranslationModeProviderProps {
-  children: ReactNode;
-}
 
 export const TranslationModeProvider: React.FC<TranslationModeProviderProps> = ({ children }) => {
   const [translationMode, setTranslationMode] = useState(false);

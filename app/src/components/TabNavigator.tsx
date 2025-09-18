@@ -2,8 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
-
-export type TabKey = 'bible' | 'search' | 'bookmarks' | 'settings';
+import { TabKey, TabNavigatorProps } from '../types/components';
 
 interface Tab {
   key: TabKey;
@@ -17,11 +16,6 @@ const tabs: Tab[] = [
   { key: 'bookmarks', title: 'Bookmarks', icon: 'bookmark' },
   { key: 'settings', title: 'Settings', icon: 'cog' },
 ];
-
-interface TabNavigatorProps {
-  activeTab: TabKey;
-  onTabPress: (tab: TabKey) => void;
-}
 
 export const TabNavigator = React.memo<TabNavigatorProps>(({ activeTab, onTabPress }) => {
   const { theme } = useTheme();

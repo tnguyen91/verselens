@@ -1,19 +1,7 @@
 import { DictionaryEntry } from '../types/bible';
+import { DictionaryApiResponse } from '../types/services';
 
 const DICTIONARY_API_BASE = 'https://verselens-dictionary-production.up.railway.app';
-
-interface ApiResponse {
-  word: string;
-  pronunciation?: {
-    phonetics: Array<{
-      text?: string;
-      audio?: string;
-    }>;
-  };
-  definitions?: {
-    wordnet?: string[];
-  };
-}
 
 export class DictionaryService {
   static async fetchWordDefinition(word: string): Promise<DictionaryEntry> {
@@ -25,7 +13,7 @@ export class DictionaryService {
         throw new Error(`Word not found: ${word}`);
       }
       
-      const apiData: ApiResponse = await response.json();
+      const apiData: DictionaryApiResponse = await response.json();
       const entry: DictionaryEntry = {
         word: cleanWord,
         pronounciation: apiData.pronunciation?.phonetics?.map(p => ({

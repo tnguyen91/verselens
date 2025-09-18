@@ -4,11 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
 import { BibleDataService } from '../services/BibleDataService';
-
-interface BibleNavigationProps {
-  onPrevious: () => void;
-  onNext: () => void;
-}
+import { BibleNavigationProps } from '../types/components';
 
 export const BibleNavigation: React.FC<BibleNavigationProps> = React.memo(({
   onPrevious,

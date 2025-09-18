@@ -12,11 +12,7 @@ import Modal from 'react-native-modal';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
-
-interface TranslationModalProps {
-  isVisible: boolean;
-  onClose: () => void;
-}
+import { TranslationModalProps } from '../types/components';
 
 export const TranslationModal = React.memo<TranslationModalProps>(({
   isVisible,

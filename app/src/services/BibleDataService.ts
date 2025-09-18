@@ -1,16 +1,10 @@
 import { BibleDataStructure, BibleTranslation, CurrentReference, TranslationInfo } from '../types/bible';
+import { Translation } from '../types/services';
 
 const BIBLE_API_BASE = 'https://raw.githubusercontent.com/jadenzaleski/BibleTranslations/master';
 
 const remoteTranslationCache = new Map<string, BibleTranslation>();
 let availableTranslationsCache: TranslationInfo[] | null = null;
-
-export interface Translation {
-  id: string;
-  name: string;
-  data: BibleDataStructure;
-  isLocal: boolean;
-}
 
 export class BibleDataService {
   static async fetchAvailableTranslations(): Promise<TranslationInfo[]> {

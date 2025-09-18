@@ -14,22 +14,8 @@ import {
 import Modal from 'react-native-modal';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
+import { BookSelectionModalProps } from '../types/components';
 import { ModalListItem } from '../types/bible';
-
-interface BookSelectionModalProps {
-  isVisible: boolean;
-  onClose: () => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  onClearSearch: () => void;
-  modalData: ModalListItem[];
-  expandedBook: string | null;
-  onBookToggle: (bookName: string) => void;
-  onChapterSelect: (bookName: string, chapter: number) => void;
-  currentBook: string;
-  currentChapter: number;
-  setExpandedBook: (bookName: string | null) => void;
-}
 
 export const BookSelectionModal: React.FC<BookSelectionModalProps> = React.memo(({
   isVisible,
@@ -378,7 +364,6 @@ const styles = StyleSheet.create({
   },
   
   expandedBookItem: {
-    // Background color applied dynamically in component
   },
   
   bookItemContent: {

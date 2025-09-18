@@ -18,24 +18,11 @@ export interface Bookmark {
   createdAt: Date;
 }
 
-export interface BookModalListItem {
-  type: 'book';
-  bookName: string;
-}
-
-export interface ChapterModalListItem {
-  type: 'chapter';
-  bookName: string;
-  chapterNumber: number;
-}
-
-export type ModalListItem = BookModalListItem | ChapterModalListItem;
-
 export interface CurrentReference {
   book: string;
   chapter: number;
   translation: string;
-  bibleData?: BibleDataStructure; 
+  bibleData?: BibleDataStructure;
 }
 
 export interface DictionaryDefinition {
@@ -61,6 +48,19 @@ export interface BookInfo {
   name: string;
   chapters: number[];
 }
+
+export interface BookModalListItem {
+  type: 'book';
+  bookName: string;
+}
+
+export interface ChapterModalListItem {
+  type: 'chapter';
+  bookName: string;
+  chapterNumber: number;
+}
+
+export type ModalListItem = BookModalListItem | ChapterModalListItem;
 
 export const getBibleBooks = (bibleData: BibleDataStructure): BookInfo[] => {
   return Object.keys(bibleData).map(bookName => ({

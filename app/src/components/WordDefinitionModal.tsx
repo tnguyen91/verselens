@@ -14,12 +14,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { DictionaryService } from '../services/DictionaryService';
 import { isWeb } from '../utils/platform';
 import { DictionaryEntry } from '../types/bible';
-
-interface WordDefinitionModalProps {
-  word: string | null;
-  isVisible: boolean;
-  onClose: () => void;
-}
+import { WordDefinitionModalProps } from '../types/components';
 
 export const WordDefinitionModal = React.memo<WordDefinitionModalProps>(({
   word,

@@ -1,33 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-
-export type ThemeMode = 'light' | 'dark';
-
-export interface Theme {
-  mode: ThemeMode;
-  colors: {
-    primary: string;
-    secondary: string;
-    tertiary: string;
-    accent: string;
-    accentLight: string;
-    accentDark: string;
-    textPrimary: string;
-    textSecondary: string;
-    textMuted: string;
-    textDim: string;
-    border: string;
-    borderLight: string;
-    borderHeavy: string;
-    overlay: string;
-    overlayLight: string;
-    surface: string;
-    card: string;
-    highlight: string;
-    warning: string;
-    error: string;
-    success: string;
-  };
-}
+import { ThemeMode, Theme, ThemeContextType, ThemeProviderProps } from '../types/contexts';
 
 const lightTheme: Theme = {
   mode: 'light',
@@ -88,16 +60,7 @@ const themes = {
   dark: darkTheme,
 };
 
-interface ThemeContextType {
-  theme: Theme;
-  setTheme: (mode: ThemeMode) => void;
-}
-
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
-interface ThemeProviderProps {
-  children: ReactNode;
-}
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState<Theme>(darkTheme);

@@ -5,13 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUserData } from '../contexts/UserDataContext';
 import { useTranslationMode } from '../contexts/TranslationModeContext';
 import { WordDefinitionModal } from './WordDefinitionModal';
-
-interface BibleVerseProps {
-  verseNumber: string;
-  verseText: string;
-  isBookmarked?: boolean;
-  onBookmarkToggle?: (verse: number, text: string) => void;
-}
+import { BibleVerseProps } from '../types/components';
 
 export const BibleVerse = memo<BibleVerseProps>(({
   verseNumber,

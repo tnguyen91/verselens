@@ -7,10 +7,9 @@ import {
   SafeAreaView,
   ScrollView,
   Switch,
-  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useUserData } from '../contexts/UserDataContext';
 import { Alert } from '../utils/alert';
 

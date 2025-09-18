@@ -1,26 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { BibleDataService, Translation } from '../services/BibleDataService';
-
-interface BibleContextType {
-  currentTranslation: Translation;
-  availableTranslations: Translation[];
-  remoteTranslations: string[];
-  selectedBook: string;
-  selectedChapter: number;
-  setTranslation: (translationId: string) => Promise<void>;
-  setBook: (book: string) => void;
-  setChapter: (chapter: number) => void;
-  getCurrentVerses: () => [string, string][];
-  isLoading: boolean;
-  loadingRemoteTranslation: boolean;
-}
+import { BibleDataService } from '../services/BibleDataService';
+import { Translation } from '../types/services';
+import { BibleContextType, BibleProviderProps } from '../types/contexts';
 
 const BibleContext = createContext<BibleContextType | undefined>(undefined);
-
-interface BibleProviderProps {
-  children: ReactNode;
-}
 
 export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
   const [availableTranslations, setAvailableTranslations] = useState<Translation[]>([]);

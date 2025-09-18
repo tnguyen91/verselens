@@ -6,6 +6,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { Bookmark } from '../types/bible';
 import { isWeb, supportsWebFileAPI, supportsFileSystem } from '../utils/platform';
+import { UserDataContextType, UserDataProviderProps } from '../types/contexts';
 
 const STORAGE_KEYS = {
   BOOKMARKS: '@verselens_bookmarks',
@@ -13,33 +14,7 @@ const STORAGE_KEYS = {
   KEEP_SCREEN_ON: '@verselens_keep_screen_on',
 };
 
-interface UserDataContextType {
-  bookmarks: Bookmark[];
-  addBookmark: (bookmark: Omit<Bookmark, 'id' | 'createdAt'>) => void;
-  removeBookmark: (bookmarkId: string) => void;
-  updateBookmarkNote: (bookmarkId: string, note: string) => void;
-  isBookmarked: (book: string, chapter: number, verse: number) => boolean;
-  
-  fontSize: number;
-  setFontSize: (size: number) => void;
-  keepScreenOn: boolean;
-  setKeepScreenOn: (value: boolean) => void;
-  
-  // Loading state
-  isLoaded: boolean;
-  
-  exportData: () => Promise<string>;
-  exportToFile: () => Promise<void>;
-  importData: (data: string) => Promise<void>;
-  importFromFile: () => Promise<void>;
-  clearAllData: () => Promise<void>;
-}
-
 const UserDataContext = createContext<UserDataContextType | undefined>(undefined);
-
-interface UserDataProviderProps {
-  children: ReactNode;
-}
 
 export const UserDataProvider: React.FC<UserDataProviderProps> = ({ children }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
