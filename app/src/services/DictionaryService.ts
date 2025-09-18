@@ -1,6 +1,6 @@
 import { DictionaryEntry } from '../types/bible';
 
-const DICTIONARY_API_BASE = 'https://verselens-dictionary-production.up.railway.app';
+const DICTIONARY_API_BASE = 'https://56eum3mj68.execute-api.us-west-1.amazonaws.com/prod';
 
 interface ApiResponse {
   word: string;
