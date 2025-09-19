@@ -3,8 +3,8 @@ import {
   View,
   FlatList,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
 import { useUserData } from '../contexts/UserDataContext';
