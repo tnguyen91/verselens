@@ -13,54 +13,54 @@ export const BibleHeader = () => {
   const { theme } = useTheme();
   const { currentTranslation, loadingRemoteTranslation, selectedBook, selectedChapter, setBook, setChapter } = useBible();
   const { translationMode, toggleTranslationMode } = useTranslationMode();
-  const [showTranslationModal, setShowTranslationModal] = useState(false);
-  const [showBookSelectionModal, setShowBookSelectionModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBookInModal, setExpandedBookInModal] = useState<string | null>(null);
+  const [isTranslationModalVisible, setIsTranslationModalVisible] = useState(false);
+  const [isBookSelectionModalVisible, setIsBookSelectionModalVisible] = useState(false);
+  const [bookSearchQuery, setBookSearchQuery] = useState('');
+  const [expandedBookName, setExpandedBookName] = useState<string | null>(null);
 
-  const bookNames = useMemo(() => Object.keys(currentTranslation.data), [currentTranslation.data]);
+  const availableBookNames = useMemo(() => Object.keys(currentTranslation.data), [currentTranslation.data]);
   
-  const bookChapterModalData = useMemo(() => {
-    const filteredBookNames = bookNames.filter((book) =>
-      book.toLowerCase().includes(searchQuery.toLowerCase())
+  const bookSelectionModalData = useMemo(() => {
+    const filteredBooks = availableBookNames.filter((bookName) =>
+      bookName.toLowerCase().includes(bookSearchQuery.toLowerCase())
     );
     
-    const result: ModalListItem[] = [];
+    const modalItems: ModalListItem[] = [];
     
-    filteredBookNames.forEach(bookName => {
-      result.push({ type: 'book', bookName });
+    filteredBooks.forEach(bookName => {
+      modalItems.push({ type: 'book', bookName });
       
-      if (expandedBookInModal === bookName) {
+      if (expandedBookName === bookName) {
         const bookData = currentTranslation.data[bookName];
         if (bookData) {
           const chapterNumbers = Object.keys(bookData).map(Number).sort((a, b) => a - b);
-          chapterNumbers.forEach(chapterNum => {
-            result.push({
+          chapterNumbers.forEach(chapterNumber => {
+            modalItems.push({
               type: 'chapter',
               bookName,
-              chapterNumber: chapterNum
+              chapterNumber
             });
           });
         }
       }
     });
 
-    return result;
-  }, [searchQuery, bookNames, expandedBookInModal, currentTranslation.data]);
+    return modalItems;
+  }, [bookSearchQuery, availableBookNames, expandedBookName, currentTranslation.data]);
 
-  const handleBookToggleInModal = useCallback((book: string) => {
-    setExpandedBookInModal(expandedBookInModal === book ? null : book);
-  }, [expandedBookInModal]);
+  const handleBookExpansionToggle = useCallback((bookName: string) => {
+    setExpandedBookName(expandedBookName === bookName ? null : bookName);
+  }, [expandedBookName]);
 
-  const handleChapterSelectFromModal = useCallback((book: string, chapter: number) => {
-    setShowBookSelectionModal(false);
-    setBook(book);
-    setChapter(chapter);
-    setExpandedBookInModal(null);
+  const handleChapterSelection = useCallback((bookName: string, chapterNumber: number) => {
+    setIsBookSelectionModalVisible(false);
+    setBook(bookName);
+    setChapter(chapterNumber);
+    setExpandedBookName(null);
   }, [setBook, setChapter]);
 
   const handleBookSelectionModalClose = useCallback(() => {
-    setShowBookSelectionModal(false);
+    setIsBookSelectionModalVisible(false);
   }, []);
 
   return (
@@ -68,7 +68,7 @@ export const BibleHeader = () => {
       <View style={[styles.topBar, { backgroundColor: theme.colors.primary, borderBottomColor: theme.colors.border }]}>
         <View style={styles.leftContainer}>
           <TouchableHighlight
-            onPress={() => setShowBookSelectionModal(true)}
+            onPress={() => setIsBookSelectionModalVisible(true)}
             underlayColor={theme.colors.overlayLight}
             style={[styles.bookButton, { 
               backgroundColor: theme.colors.tertiary,
@@ -82,7 +82,7 @@ export const BibleHeader = () => {
           </TouchableHighlight>
 
           <TouchableHighlight
-            onPress={() => setShowTranslationModal(true)}
+            onPress={() => setIsTranslationModalVisible(true)}
             underlayColor={theme.colors.overlayLight}
             style={[styles.translationButton, { 
               backgroundColor: theme.colors.tertiary,
@@ -120,23 +120,23 @@ export const BibleHeader = () => {
       </View>
 
       <BookSelectionModal
-        isVisible={showBookSelectionModal}
+        isVisible={isBookSelectionModalVisible}
         onClose={handleBookSelectionModalClose}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onClearSearch={() => setSearchQuery('')}
-        modalData={bookChapterModalData}
-        expandedBook={expandedBookInModal}
-        onBookToggle={handleBookToggleInModal}
-        onChapterSelect={handleChapterSelectFromModal}
+        searchQuery={bookSearchQuery}
+        onSearchChange={setBookSearchQuery}
+        onClearSearch={() => setBookSearchQuery('')}
+        modalData={bookSelectionModalData}
+        expandedBook={expandedBookName}
+        onBookToggle={handleBookExpansionToggle}
+        onChapterSelect={handleChapterSelection}
         currentBook={selectedBook}
         currentChapter={selectedChapter}
-        setExpandedBook={setExpandedBookInModal}
+        setExpandedBook={setExpandedBookName}
       />
 
       <TranslationModal
-        isVisible={showTranslationModal}
-        onClose={() => setShowTranslationModal(false)}
+        isVisible={isTranslationModalVisible}
+        onClose={() => setIsTranslationModalVisible(false)}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { BibleDataService } from '../services/BibleDataService';
 import { Translation } from '../types/services';
@@ -7,25 +7,25 @@ import { BibleContextType, BibleProviderProps } from '../types/contexts';
 const BibleContext = createContext<BibleContextType | undefined>(undefined);
 
 export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
-  const [availableTranslations, setAvailableTranslations] = useState<Translation[]>([]);
-  const [currentTranslation, setCurrentTranslation] = useState<Translation | null>(null);
-  const [selectedBook, setSelectedBook] = useState<string>('Genesis');
-  const [selectedChapter, setSelectedChapter] = useState<number>(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingRemoteTranslation, setLoadingRemoteTranslation] = useState(false);
+  const [availableBibleTranslations, setAvailableBibleTranslations] = useState<Translation[]>([]);
+  const [currentBibleTranslation, setCurrentBibleTranslation] = useState<Translation | null>(null);
+  const [selectedBookName, setSelectedBookName] = useState<string>('Genesis');
+  const [selectedChapterNumber, setSelectedChapterNumber] = useState<number>(1);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoadingTranslation, setIsLoadingTranslation] = useState(false);
 
   useEffect(() => {
-    const initializeTranslations = async () => {
+    const loadInitialTranslations = async () => {
       try {
         const translations = await BibleDataService.getAllTranslations();
-        setAvailableTranslations(translations);
+        setAvailableBibleTranslations(translations);
         
         if (translations.length > 0) {
           const defaultTranslation = translations.find(t => t.name.toUpperCase() === 'ESV') || translations[0];
-          await setTranslation(defaultTranslation.id);
+          await changeTranslation(defaultTranslation.id);
         } else {
           console.error('No translations found');
-          setCurrentTranslation({
+          setCurrentBibleTranslation({
             id: 'error',
             name: 'Error',
             data: {},
@@ -34,73 +34,73 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error('Failed to initialize translations:', error);
-        setCurrentTranslation({
+        setCurrentBibleTranslation({
           id: 'error',
           name: 'Error - Check Internet Connection',
           data: {},
           isLocal: false,
         });
       } finally {
-        setIsLoading(false);
+        setIsInitializing(false);
       }
     };
 
-    initializeTranslations();
+    loadInitialTranslations();
   }, []);
 
-  const remoteTranslations = availableTranslations.map(t => t.name);
+  const translationNames = availableBibleTranslations.map(t => t.name);
 
-  const setTranslation = useCallback(async (translationId: string) => {
-    const translationAbbr = translationId.toUpperCase();
+  const changeTranslation = useCallback(async (translationId: string) => {
+    const translationAbbreviation = translationId.toUpperCase();
     
-    setLoadingRemoteTranslation(true);
+    setIsLoadingTranslation(true);
     try {
-      const result = await BibleDataService.fetchRemoteTranslation(translationAbbr);
+      const result = await BibleDataService.fetchRemoteTranslation(translationAbbreviation);
       
-      const remoteTranslation: Translation = {
-        id: translationAbbr.toLowerCase(),
-        name: translationAbbr, 
+      const newTranslation: Translation = {
+        id: translationAbbreviation.toLowerCase(),
+        name: translationAbbreviation, 
         data: result.data,
         isLocal: false,
       };
       
-      setCurrentTranslation(remoteTranslation);
+      setCurrentBibleTranslation(newTranslation);
       
-      setAvailableTranslations(prev => 
-        prev.map(t => t.name.toUpperCase() === translationAbbr ? remoteTranslation : t)
+      setAvailableBibleTranslations(prev => 
+        prev.map(t => t.name.toUpperCase() === translationAbbreviation ? newTranslation : t)
       );
       
     } catch (error) {
-      console.error(`Failed to load ${translationAbbr} translation:`, error);
-      alert(`Failed to load ${translationAbbr} translation. Please check your internet connection and try again.`);
+      console.error(`Failed to load ${translationAbbreviation} translation:`, error);
+      alert(`Failed to load ${translationAbbreviation} translation. Please check your internet connection and try again.`);
       throw error; 
     } finally {
-      setLoadingRemoteTranslation(false);
+      setIsLoadingTranslation(false);
     }
   }, []);
 
-  const setBook = useCallback((book: string) => {
-    setSelectedBook(book);
-    setSelectedChapter(1);
+  const selectBook = useCallback((bookName: string) => {
+    setSelectedBookName(bookName);
+    setSelectedChapterNumber(1);
   }, []);
 
-  const setChapter = useCallback((chapter: number) => {
-    setSelectedChapter(chapter);
+  const selectChapter = useCallback((chapterNumber: number) => {
+    setSelectedChapterNumber(chapterNumber);
   }, []);
 
-  const getCurrentVerses = useCallback((): [string, string][] => {
-    if (!currentTranslation) return [];
+  const getCurrentChapterVerses = useCallback((): [string, string][] => {
+    if (!currentBibleTranslation) return [];
     
-    const bookData = currentTranslation.data[selectedBook];
-    if (!bookData) return [];
+    const selectedBookData = currentBibleTranslation.data[selectedBookName];
+    if (!selectedBookData) return [];
     
-    const chapterData = bookData[selectedChapter.toString()];
-    if (!chapterData) return [];
+    const selectedChapterData = selectedBookData[selectedChapterNumber.toString()];
+    if (!selectedChapterData) return [];
 
-    return Object.entries(chapterData) as [string, string][];
-  }, [currentTranslation, selectedBook, selectedChapter]);
+    return Object.entries(selectedChapterData) as [string, string][];
+  }, [currentBibleTranslation, selectedBookName, selectedChapterNumber]);
 
-  if (isLoading || !currentTranslation) {
+  if (isInitializing || !currentBibleTranslation) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -112,17 +112,17 @@ export const BibleProvider: React.FC<BibleProviderProps> = ({ children }) => {
   return (
     <BibleContext.Provider
       value={{
-        currentTranslation,
-        availableTranslations,
-        remoteTranslations,
-        selectedBook,
-        selectedChapter,
-        setTranslation,
-        setBook,
-        setChapter,
-        getCurrentVerses,
-        isLoading,
-        loadingRemoteTranslation,
+        currentTranslation: currentBibleTranslation,
+        availableTranslations: availableBibleTranslations,
+        remoteTranslations: translationNames,
+        selectedBook: selectedBookName,
+        selectedChapter: selectedChapterNumber,
+        setTranslation: changeTranslation,
+        setBook: selectBook,
+        setChapter: selectChapter,
+        getCurrentVerses: getCurrentChapterVerses,
+        isLoading: isInitializing,
+        loadingRemoteTranslation: isLoadingTranslation,
       }}
     >
       {children}

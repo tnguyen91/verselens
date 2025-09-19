@@ -11,14 +11,8 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { Bookmark } from '../types/bible';
+import { BookmarksProps } from '../types/components';
 import { Alert } from '../utils/alert';
-
-interface BookmarksProps {
-  bookmarks: Bookmark[];
-  onVerseSelect: (book: string, chapter: number, verse: number) => void;
-  onDeleteBookmark: (bookmarkId: string) => void;
-  onAddNote: (bookmarkId: string, note: string) => void;
-}
 
 export const Bookmarks = React.memo<BookmarksProps>(({
   bookmarks,

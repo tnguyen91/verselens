@@ -49,9 +49,12 @@ export interface BibleHeaderProps {
 }
 
 export interface BookmarksProps {
-  // Add bookmarks screen props here
+  bookmarks: import('./bible').Bookmark[];
+  onVerseSelect: (book: string, chapter: number, verse: number) => void;
+  onDeleteBookmark: (bookmarkId: string) => void;
+  onAddNote: (bookmarkId: string, note: string) => void;
 }
 
 export interface SearchProps {
-  // Add search screen props here
+  onVerseSelect: (book: string, chapter: number, verse: number) => void;
 }

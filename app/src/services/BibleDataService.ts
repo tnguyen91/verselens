@@ -1,15 +1,15 @@
 import { BibleDataStructure, BibleTranslation, CurrentReference, TranslationInfo } from '../types/bible';
 import { Translation } from '../types/services';
 
-const BIBLE_API_BASE = 'https://raw.githubusercontent.com/jadenzaleski/BibleTranslations/master';
+const BIBLE_API_BASE_URL = 'https://raw.githubusercontent.com/jadenzaleski/BibleTranslations/master';
 
-const remoteTranslationCache = new Map<string, BibleTranslation>();
-let availableTranslationsCache: TranslationInfo[] | null = null;
+const cachedRemoteTranslations = new Map<string, BibleTranslation>();
+let cachedAvailableTranslations: TranslationInfo[] | null = null;
 
 export class BibleDataService {
   static async fetchAvailableTranslations(): Promise<TranslationInfo[]> {
-    if (availableTranslationsCache) {
-      return availableTranslationsCache;
+    if (cachedAvailableTranslations) {
+      return cachedAvailableTranslations;
     }
 
     try {
@@ -34,7 +34,7 @@ export class BibleDataService {
           name: item.name 
         }));
       
-      availableTranslationsCache = translationFolders;
+      cachedAvailableTranslations = translationFolders;
       return translationFolders;
       
     } catch (error) {
@@ -54,12 +54,12 @@ export class BibleDataService {
     }));
   }
 
-  static async fetchRemoteTranslation(translation: string): Promise<{ data: BibleTranslation }> {
-    if (remoteTranslationCache.has(translation)) {
-      return { data: remoteTranslationCache.get(translation)! };
+  static async fetchRemoteTranslation(translationCode: string): Promise<{ data: BibleTranslation }> {
+    if (cachedRemoteTranslations.has(translationCode)) {
+      return { data: cachedRemoteTranslations.get(translationCode)! };
     }
 
-    const apiUrl = `${BIBLE_API_BASE}/${translation}/${translation}_bible.json`;
+    const apiUrl = `${BIBLE_API_BASE_URL}/${translationCode}/${translationCode}_bible.json`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); 
@@ -75,18 +75,18 @@ export class BibleDataService {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - Failed to fetch ${translation}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - Failed to fetch ${translationCode}`);
     }
     
-    const data: BibleTranslation = await response.json();
+    const bibleData: BibleTranslation = await response.json();
     
-    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-      throw new Error(`Invalid Bible data received for ${translation}`);
+    if (!bibleData || typeof bibleData !== 'object' || Object.keys(bibleData).length === 0) {
+      throw new Error(`Invalid Bible data received for ${translationCode}`);
     }
     
-    remoteTranslationCache.set(translation, data);
+    cachedRemoteTranslations.set(translationCode, bibleData);
     
-    return { data };
+    return { data: bibleData };
   }
 
   static getNextChapter(book: string, chapter: number, bibleData?: BibleTranslation): { book: string; chapter: number } | null {

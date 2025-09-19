@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBible } from '../contexts/BibleContext';
 import { BibleDataService } from '../services/BibleDataService';
+import { SearchProps } from '../types/components';
 
 interface SearchResult {
   book: string;
@@ -20,10 +21,6 @@ interface SearchResult {
   verse: number;
   text: string;
   preview: string;
-}
-
-interface SearchProps {
-  onVerseSelect: (book: string, chapter: number, verse: number) => void;
 }
 
 export const Search = React.memo<SearchProps>(({ onVerseSelect }) => {

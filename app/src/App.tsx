@@ -92,7 +92,7 @@ const AppContent: React.FC = React.memo(() => {
 
 AppContent.displayName = 'AppContent';
 
-export const VerseLensApp: React.FC = () => {
+export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <TranslationModeProvider>

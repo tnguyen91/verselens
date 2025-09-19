@@ -1,6 +1,6 @@
 import React from 'react';
-import { VerseLensApp } from './src/VerseLensApp';
+import { App as MainApp } from './src/App';
 
 export default function App(): React.ReactElement {
-  return <VerseLensApp />;
+  return <MainApp />;
 }
